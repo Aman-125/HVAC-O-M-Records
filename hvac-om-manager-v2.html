@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HVAC O&M Manager v2 — Google Sheets Backed</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+<style>
+:root {
+  --bg:#07090f; --bg2:#0c1018; --bg3:#111827;
+  --surf:#111827; --surf2:#1a2335; --surf3:#1e2d45;
+  --bdr:#1e2d3d; --bdr2:#263d57; --bdr3:#2d4a6b;
+  --txt:#e8edf5; --txt2:#8fa3bc; --txt3:#4d6280;
+  --amber:#f59e0b; --amber2:#fbbf24; --adim:rgba(245,158,11,.12);
+  --green:#22c55e; --gdim:rgba(34,197,94,.12);
+  --red:#ef4444; --rdim:rgba(239,68,68,.12);
+  --blue:#3b82f6; --bdim:rgba(59,130,246,.12);
+  --purple:#a78bfa; --pdim:rgba(167,139,250,.12);
+  --cyan:#06b6d4; --cdim:rgba(6,182,212,.12);
+  --orange:#fb923c; --odim:rgba(251,146,60,.12);
+  --r:10px; --shadow:0 8px 32px rgba(0,0,0,.5);
+  --fb:'Outfit',sans-serif; --fm:'IBM Plex Mono',monospace;
+  --sw:252px; --hh:56px;
+}
+[data-theme=light] {
+  --bg:#f0f4f8; --bg2:#e2e8f0; --bg3:#d1dde8;
+  --surf:#fff; --surf2:#f8fafc; --surf3:#eef2f7;
+  --bdr:#dde4ee; --bdr2:#c8d4e2; --bdr3:#b0c0d4;
+  --txt:#0f172a; --txt2:#475569; --txt3:#94a3b8;
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:var(--fb);background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--amber)}
+
+/* LAYOUT */
+#app{display:flex;min-height:100vh}
+#sidebar{width:var(--sw);min-width:var(--sw);background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;overflow:hidden}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:14px 16px;min-height:var(--hh);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.lmark{width:32px;height:32px;border-radius:9px;background:var(--cyan);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;color:#000;font-weight:800;font-family:var(--fm)}
+.sidebar-logo-text strong{display:block;font-family:var(--fm);font-size:12px;font-weight:700;color:var(--cyan)}
+.sidebar-logo-text span{font-size:10px;color:var(--txt3);font-family:var(--fm)}
+#sidenav{flex:1;padding:10px 8px;overflow-y:auto}
+.nsl{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);padding:14px 10px 4px}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--txt2);font-size:13px;font-weight:500;width:100%;background:none;border:none;transition:background .15s,color .15s;cursor:pointer}
+.ni:hover{background:var(--surf2);color:var(--txt)}
+.ni.active{background:var(--cdim);color:var(--cyan);border:1px solid rgba(6,182,212,.2)}
+.nic{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+.nl{flex:1;text-align:left}
+.nbadge{background:var(--red);color:#fff;font-family:var(--fm);font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:auto}
+.sidebar-foot{padding:8px;border-top:1px solid var(--bdr);flex-shrink:0}
+
+#main{flex:1;display:flex;flex-direction:column;margin-left:var(--sw)}
+header{height:var(--hh);background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:100}
+.ptitle{font-family:var(--fm);font-weight:700;font-size:13px;color:var(--txt)}
+.psub{font-size:11px;color:var(--txt3);font-family:var(--fm)}
+.hact{display:flex;align-items:center;gap:8px;margin-left:auto}
+main{flex:1;padding:20px;overflow-y:auto}
+.page{display:none}.page.active{display:block}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--fb)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--cyan);color:#000}.btn-primary:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
+.btn-secondary{background:var(--surf2);color:var(--txt);border:1px solid var(--bdr)}.btn-secondary:hover:not(:disabled){background:var(--surf3);border-color:var(--bdr2)}
+.btn-danger{background:var(--rdim);color:var(--red);border:1px solid rgba(239,68,68,.25)}.btn-danger:hover:not(:disabled){background:rgba(239,68,68,.2)}
+.btn-success{background:var(--gdim);color:var(--green);border:1px solid rgba(34,197,94,.25)}.btn-success:hover:not(:disabled){background:rgba(34,197,94,.2)}
+.btn-amber{background:var(--adim);color:var(--amber);border:1px solid rgba(245,158,11,.25)}.btn-amber:hover:not(:disabled){background:rgba(245,158,11,.2)}
+.btn-purple{background:var(--pdim);color:var(--purple);border:1px solid rgba(167,139,250,.25)}.btn-purple:hover:not(:disabled){background:rgba(167,139,250,.2)}
+.btn-orange{background:var(--odim);color:var(--orange);border:1px solid rgba(251,146,60,.25)}.btn-orange:hover:not(:disabled){background:rgba(251,146,60,.2)}
+.btn-sm{padding:5px 12px;font-size:12px}.btn-xs{padding:3px 8px;font-size:11px;border-radius:6px}
+.bico{background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:7px 12px;color:var(--txt2);font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:all .15s}
+.bico:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* CARDS */
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:20px}
+.card-title{font-family:var(--fm);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:14px}
+
+/* KPI */
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.kcard{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:18px;position:relative;overflow:hidden;transition:border .2s,transform .15s;cursor:default}
+.kcard:hover{border-color:var(--bdr2);transform:translateY(-1px)}
+.kcard::before{content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit}
+.kcard[data-a=cyan]::before{background:radial-gradient(ellipse at top left,rgba(6,182,212,.07),transparent 60%)}
+.kcard[data-a=green]::before{background:radial-gradient(ellipse at top left,rgba(34,197,94,.07),transparent 60%)}
+.kcard[data-a=red]::before{background:radial-gradient(ellipse at top left,rgba(239,68,68,.07),transparent 60%)}
+.kcard[data-a=amber]::before{background:radial-gradient(ellipse at top left,rgba(245,158,11,.07),transparent 60%)}
+.kcard[data-a=purple]::before{background:radial-gradient(ellipse at top left,rgba(167,139,250,.07),transparent 60%)}
+.kcard[data-a=orange]::before{background:radial-gradient(ellipse at top left,rgba(251,146,60,.07),transparent 60%)}
+.kico{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px}
+.kval{font-family:var(--fm);font-size:28px;font-weight:700;line-height:1;letter-spacing:-1px}
+.klbl{font-size:11px;font-weight:600;color:var(--txt2);margin-top:5px;text-transform:uppercase;letter-spacing:.04em}
+.ksub{font-size:10px;color:var(--txt3);margin-top:3px;font-family:var(--fm)}
+
+/* TABLE */
+.twrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--bdr)}
+table{width:100%;border-collapse:collapse;min-width:700px}
+thead{background:var(--bg2)}
+th{padding:10px 14px;text-align:left;font-family:var(--fm);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);white-space:nowrap;border-bottom:1px solid var(--bdr)}
+td{padding:9px 14px;font-size:13px;border-top:1px solid var(--bdr);color:var(--txt2);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.02)}
+[data-theme=light] tr:hover td{background:rgba(0,0,0,.02)}
+td.nc{color:var(--txt);font-weight:600}
+td.mo{font-family:var(--fm);font-size:12px}
+.empty{text-align:center;padding:56px 20px;color:var(--txt3)}
+.eico{font-size:40px;margin-bottom:12px;opacity:.3}
+
+/* CONTROLS */
+.cbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.sbox{position:relative;flex:1;min-width:200px}
+.sbox input{width:100%;background:var(--surf);border:1px solid var(--bdr);color:var(--txt);border-radius:8px;padding:7px 32px;font-size:13px;outline:none;transition:border .2s}
+.sbox input:focus{border-color:var(--cyan)}
+.sico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt3);font-size:13px;pointer-events:none}
+.fsel{background:var(--surf);border:1px solid var(--bdr);color:var(--txt);border-radius:8px;padding:7px 10px;font-size:13px;outline:none;cursor:pointer;transition:border .2s}
+.fsel:focus{border-color:var(--cyan)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:10px;font-family:var(--fm);font-weight:600;border:1px solid transparent;white-space:nowrap}
+.bok{background:var(--gdim);color:var(--green);border-color:rgba(34,197,94,.25)}
+.bwarn{background:var(--adim);color:var(--amber);border-color:rgba(245,158,11,.3);animation:blk 2s infinite}
+.berr{background:var(--rdim);color:var(--red);border-color:rgba(239,68,68,.3)}
+.binfo{background:var(--bdim);color:var(--blue);border-color:rgba(59,130,246,.25)}
+.bpurple{background:var(--pdim);color:var(--purple);border-color:rgba(167,139,250,.25)}
+.borange{background:var(--odim);color:var(--orange);border-color:rgba(251,146,60,.25)}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* FORMS */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-family:var(--fm);font-size:10px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.05em}
+.fg input,.fg select,.fg textarea{background:var(--surf2);border:1px solid var(--bdr);color:var(--txt);border-radius:8px;padding:8px 12px;font-size:13px;outline:none;transition:border .2s;width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--cyan)}
+.fg input[type=date],.fg input[type=time]{color-scheme:dark}
+[data-theme=light] .fg input[type=date],[data-theme=light] .fg input[type=time]{color-scheme:light}
+.fg textarea{resize:vertical;min-height:60px}
+.fr{display:grid;gap:14px}.fr2{grid-template-columns:1fr 1fr}.fr3{grid-template-columns:1fr 1fr 1fr}.fr4{grid-template-columns:1fr 1fr 1fr 1fr}
+.divider{height:1px;background:var(--bdr);margin:16px 0}
+.fhint{font-size:10px;color:var(--txt3);font-family:var(--fm)}
+
+/* MODALS */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+.mover.open{opacity:1;pointer-events:all}
+.mbox{background:var(--surf);border:1px solid var(--bdr2);border-radius:14px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6);transform:translateY(8px);transition:transform .2s}
+.mover.open .mbox{transform:translateY(0)}
+.msm{max-width:420px}.mlg{max-width:760px}.mxl{max-width:960px}
+.mhd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bdr);position:sticky;top:0;background:var(--surf);z-index:2}
+.mhd h3{font-family:var(--fm);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.mclose{background:none;border:none;color:var(--txt3);font-size:18px;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all .15s}
+.mclose:hover{background:var(--surf2);color:var(--txt)}
+.mbdy{padding:20px}
+.mft{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;gap:10px;justify-content:flex-end;background:var(--surf);position:sticky;bottom:0}
+
+/* IROW */
+.irow{background:var(--surf2);border-radius:8px;padding:12px 16px;border:1px solid var(--bdr)}
+.irow .il{font-size:10px;font-family:var(--fm);color:var(--txt3);text-transform:uppercase;letter-spacing:.05em}
+.irow .iv{font-size:14px;font-weight:600;color:var(--txt);margin-top:2px}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:340px;pointer-events:none;line-height:1.4}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{background:var(--green);color:#fff}
+#toast.error{background:var(--red);color:#fff}
+#toast.info{background:var(--blue);color:#fff}
+#toast.warn{background:var(--amber);color:#000}
+
+/* LOADER */
+#loader{position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loader.hidden{opacity:0;pointer-events:none}
+.llogo{width:52px;height:52px;background:var(--cyan);border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-weight:800;font-size:18px;color:#000;animation:lp 1.5s ease infinite}
+@keyframes lp{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.lbar{width:200px;height:3px;background:var(--bdr);border-radius:99px;overflow:hidden}
+.linner{height:100%;background:var(--cyan);border-radius:99px;animation:ls 1.5s ease infinite}
+@keyframes ls{0%{width:0;margin-left:0}60%{width:100%;margin-left:0}100%{width:0;margin-left:100%}}
+.ltxt{font-family:var(--fm);font-size:12px;color:var(--txt3)}
+
+/* CHECKLIST ITEM */
+.cl-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;margin-bottom:8px;transition:all .2s}
+.cl-item.done{opacity:.55;border-color:var(--gdim)}
+.cl-item.done .cl-title{text-decoration:line-through;color:var(--txt3)}
+.cl-check{width:20px;height:20px;border-radius:5px;border:2px solid var(--bdr2);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;margin-top:1px}
+.cl-check.checked{background:var(--green);border-color:var(--green);color:#fff}
+.cl-title{font-weight:600;font-size:13px;color:var(--txt)}
+.cl-meta{font-size:11px;color:var(--txt3);font-family:var(--fm);margin-top:2px}
+.cl-freq{font-size:10px;padding:1px 7px;border-radius:99px;font-family:var(--fm);font-weight:600}
+
+/* BREAKDOWN CARD */
+.bd-card{background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin-bottom:10px;border-left:4px solid var(--bdr)}
+.bd-card.open{border-left-color:var(--red)}
+.bd-card.closed{border-left-color:var(--green)}
+.bd-card.pending{border-left-color:var(--amber)}
+.bd-machine{font-weight:700;font-size:14px;color:var(--txt)}
+.bd-fault{font-size:12px;color:var(--txt2);margin-top:4px}
+.bd-meta{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.bd-meta-item{font-size:11px;color:var(--txt3);font-family:var(--fm)}
+
+/* HANDOVER CARD */
+.ho-card{background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin-bottom:10px;cursor:pointer;transition:border .15s}
+.ho-card:hover{border-color:var(--bdr2)}
+.ho-shift{font-family:var(--fm);font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em}
+.ho-date{font-size:13px;font-weight:600;color:var(--txt);margin-top:2px}
+.ho-from{font-size:11px;color:var(--txt3);margin-top:4px}
+
+/* READING ROW */
+.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.reading-cell{background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:10px 14px}
+.reading-cell label{font-family:var(--fm);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);display:block;margin-bottom:5px}
+.reading-cell input{background:transparent;border:none;outline:none;color:var(--txt);font-family:var(--fm);font-size:16px;font-weight:700;width:100%;border-bottom:1px solid var(--bdr2);padding:2px 0}
+.reading-cell input:focus{border-bottom-color:var(--cyan)}
+.reading-cell .unit{font-family:var(--fm);font-size:9px;color:var(--txt3);margin-top:3px}
+
+/* SYNC DOT */
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0;transition:background .3s}
+.sdot.online{background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.5)}
+.sdot.syncing{background:var(--cyan);animation:pd 1s infinite}
+.sdot.error{background:var(--red)}
+.sdot.offline{background:var(--txt3)}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* GAS SETUP BANNER */
+.setup-banner{background:var(--cdim);border:1px solid rgba(6,182,212,.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+
+@media print{
+  body{background:#fff;color:#000}
+  #sidebar,header,.hact,.no-print{display:none!important}
+  #main{margin-left:0!important}
+  .print-area{display:block!important}
+}
+.print-doc{display:none}
+
+/* ALERT BANNER */
+.alert-banner{background:var(--rdim);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.alert-banner.warn{background:var(--adim);border-color:rgba(245,158,11,.3)}
+.alert-banner-icon{font-size:20px;flex-shrink:0}
+.alert-banner-text{font-size:13px;color:var(--txt);flex:1}
+.alert-banner-text strong{display:block;font-weight:700;margin-bottom:2px}
+.alert-banner-text span{font-size:11px;color:var(--txt2);font-family:var(--fm)}
+
+/* SECTION LABEL */
+.sec-label{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--txt3);margin-bottom:10px}
+
+/* EQUIPMENT GROUP */
+.eq-group{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
+.eq-group-hd{background:var(--bg2);padding:10px 16px;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--txt2);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bdr)}
+.eq-group-body{padding:14px}
+
+/* PRINT RECEIPT */
+.rpt-wrap{background:#fff;color:#111;font-family:Arial,sans-serif;padding:20px}
+.rpt-hdr{background:#0f172a;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin:-20px -20px 16px}
+.rpt-title{font-size:16px;font-weight:900;letter-spacing:2px;text-transform:uppercase}
+.rpt-sub{font-size:9px;letter-spacing:2px;opacity:.7;margin-top:2px;text-transform:uppercase}
+.rpt-no{text-align:right;font-family:monospace;font-size:14px;font-weight:900;color:#06b6d4}
+.rpt-meta{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #e5e7eb;border-radius:8px;margin-bottom:14px}
+.rpt-meta-cell{padding:10px 14px;border-right:1px solid #e5e7eb}
+.rpt-meta-cell:last-child{border-right:none}
+.rpt-meta-label{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:3px}
+.rpt-meta-val{font-size:12px;font-weight:700;color:#111}
+.rpt-sec{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#475569;background:#f8fafc;padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:8px}
+.rpt-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px}
+.rpt-tbl th{background:#1e293b;color:#fff;padding:7px 12px;text-align:left;font-size:10px;font-weight:700}
+.rpt-tbl td{padding:7px 12px;border-bottom:1px solid #f0f0f0}
+.rpt-tbl tr:last-child td{border:none}
+.rpt-sig{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px;border-top:2px solid #1e293b;padding-top:14px}
+.rpt-sig-cell{text-align:center}
+.rpt-sig-line{border-bottom:1.5px solid #333;height:40px;margin-bottom:6px}
+.rpt-sig-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.rpt-sig-role{font-size:8px;color:#888;text-transform:uppercase}
+.rpt-ftr{border-top:1px solid #e5e7eb;padding-top:8px;margin-top:14px;display:flex;justify-content:space-between;font-size:8px;color:#aaa}
+.status-pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700}
+
+/* OVERLAY */
+#printOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;overflow-y:auto;padding:24px 16px}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="llogo">O&M</div>
+  <div class="lbar"><div class="linner"></div></div>
+  <div class="ltxt">Loading HVAC O&M Manager…</div>
+</div>
+
+<div id="toast"></div>
+
+<div id="printOverlay">
+  <div style="max-width:820px;margin:0 auto">
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap" class="no-print">
+      <button class="btn btn-primary" onclick="doPrintOverlay()">🖨 Print / Save PDF</button>
+      <button class="btn btn-secondary" onclick="closeOverlay()">✕ Close</button>
+    </div>
+    <div id="overlayContent" style="box-shadow:0 8px 40px rgba(0,0,0,.6)"></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT BREAKDOWN MODAL -->
+<div class="mover" id="mBD">
+  <div class="mbox mlg">
+    <div class="mhd"><h3 id="mBDTitle">🚨 Log Breakdown</h3><button class="mclose" onclick="closeM('mBD')">✕</button></div>
+    <div class="mbdy">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="fr fr2">
+          <div class="fg"><label>Date *</label><input type="date" id="bdDate"/></div>
+          <div class="fg"><label>Time *</label><input type="time" id="bdTime"/></div>
+        </div>
+        <div class="fr fr2">
+          <div class="fg"><label>Machine / Equipment *</label><input type="text" id="bdMachine" placeholder="e.g. Chiller-1, AHU-03"/></div>
+          <div class="fg"><label>Location</label><input type="text" id="bdLocation" placeholder="e.g. B2 Plant Room"/></div>
+        </div>
+        <div class="fg"><label>Fault / Problem Description *</label><textarea id="bdFault" rows="2" placeholder="Describe the fault clearly…"></textarea></div>
+        <div class="fr fr2">
+          <div class="fg"><label>Attended By *</label><input type="text" id="bdTech" list="techListBD" placeholder="Technician name"/><datalist id="techListBD"></datalist></div>
+          <div class="fg"><label>Priority</label>
+            <select id="bdPriority">
+              <option value="Critical">🔴 Critical — Machine Down</option>
+              <option value="High">🟠 High — Reduced Performance</option>
+              <option value="Medium" selected>🟡 Medium — Partial Fault</option>
+              <option value="Low">🟢 Low — Minor Issue</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label>Action Taken</label><textarea id="bdAction" rows="2" placeholder="What was done to address the fault?"></textarea></div>
+        <div class="fr fr2">
+          <div class="fg"><label>Status</label>
+            <select id="bdStatus">
+              <option value="Open">Open — In Progress</option>
+              <option value="Pending">Pending — Awaiting Parts/Vendor</option>
+              <option value="Closed">Closed — Resolved</option>
+            </select>
+          </div>
+          <div class="fg"><label>Downtime (hours)</label><input type="number" id="bdDowntime" min="0" step="0.5" placeholder="e.g. 2.5"/></div>
+        </div>
+        <div class="fg"><label>Restoration Date & Time</label><input type="datetime-local" id="bdRestored"/></div>
+        <div class="fg"><label>Remarks / Root Cause</label><textarea id="bdRemarks" rows="2" placeholder="Root cause, preventive action recommended…"></textarea></div>
+        <input type="hidden" id="bdId"/>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('mBD')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBD()" id="bdSaveBtn">💾 Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT PM MODAL -->
+<div class="mover" id="mPM">
+  <div class="mbox">
+    <div class="mhd"><h3 id="mPMTitle">🗓 Add PM Task</h3><button class="mclose" onclick="closeM('mPM')">✕</button></div>
+    <div class="mbdy">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="fg"><label>Task Name *</label><input type="text" id="pmName" placeholder="e.g. Check condenser water temperature"/></div>
+        <div class="fr fr2">
+          <div class="fg"><label>Equipment / System</label><input type="text" id="pmEquip" placeholder="e.g. Chiller-1, Cooling Tower"/></div>
+          <div class="fg"><label>Frequency</label>
+            <select id="pmFreq">
+              <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
+              <option value="Quarterly">Quarterly</option>
+              <option value="Half-Yearly">Half-Yearly</option>
+              <option value="Annual">Annual</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr fr2">
+          <div class="fg"><label>Assigned To</label><input type="text" id="pmAssigned" list="techListPM" placeholder="Technician"/><datalist id="techListPM"></datalist></div>
+          <div class="fg"><label>Est. Duration (min)</label><input type="number" id="pmDuration" min="5" step="5" placeholder="30"/></div>
+        </div>
+        <div class="fg"><label>Instructions / Checklist Steps</label><textarea id="pmInstructions" rows="3" placeholder="Step-by-step maintenance instructions…"></textarea></div>
+        <input type="hidden" id="pmId"/>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('mPM')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePM()" id="pmSaveBtn">💾 Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- PM LOG COMPLETION MODAL -->
+<div class="mover" id="mPMLog">
+  <div class="mbox msm">
+    <div class="mhd"><h3>✅ Complete PM Task</h3><button class="mclose" onclick="closeM('mPMLog')">✕</button></div>
+    <div class="mbdy">
+      <div id="pmLogInfo" class="irow" style="margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="fg"><label>Completed By *</label><input type="text" id="pmLogTech" list="techListPMLog" placeholder="Technician name"/><datalist id="techListPMLog"></datalist></div>
+        <div class="fg"><label>Date Completed *</label><input type="date" id="pmLogDate"/></div>
+        <div class="fg"><label>Observations / Remarks</label><textarea id="pmLogRemarks" rows="2" placeholder="Any findings or notes…"></textarea></div>
+      </div>
+      <input type="hidden" id="pmLogId"/>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('mPMLog')">Cancel</button>
+      <button class="btn btn-success" onclick="completePM()">✅ Mark Complete</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHIFT HANDOVER MODAL -->
+<div class="mover" id="mHO">
+  <div class="mbox mlg">
+    <div class="mhd"><h3 id="mHOTitle">📋 Shift Handover Log</h3><button class="mclose" onclick="closeM('mHO')">✕</button></div>
+    <div class="mbdy">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="fr fr3">
+          <div class="fg"><label>Date *</label><input type="date" id="hoDate"/></div>
+          <div class="fg"><label>Shift *</label>
+            <select id="hoShift">
+              <option value="Morning (06:00–14:00)">Morning (06:00–14:00)</option>
+              <option value="Afternoon (14:00–22:00)">Afternoon (14:00–22:00)</option>
+              <option value="Night (22:00–06:00)">Night (22:00–06:00)</option>
+            </select>
+          </div>
+          <div class="fg"><label>Outgoing Supervisor *</label><input type="text" id="hoFrom" list="techListHO" placeholder="Name"/><datalist id="techListHO"></datalist></div>
+        </div>
+        <div class="fg"><label>Incoming Supervisor *</label><input type="text" id="hoTo" list="techListHO2" placeholder="Name"/><datalist id="techListHO2"></datalist></div>
+        <div class="fg"><label>Equipment Status Summary *</label><textarea id="hoEquipStatus" rows="3" placeholder="e.g. All chillers running normal. Chiller-2 on standby. AHU-05 filter cleaning pending."/></div>
+        <div class="fg"><label>Ongoing Issues / Pending Work</label><textarea id="hoPending" rows="2" placeholder="e.g. Waiting for VFD replacement on Pump-3. Vendor visit scheduled tomorrow."/></div>
+        <div class="fg"><label>Tasks Completed This Shift</label><textarea id="hoCompleted" rows="2" placeholder="List of PM tasks, repairs, or work orders completed this shift."/></div>
+        <div class="fg"><label>Safety / Hazard Alerts</label><textarea id="hoSafety" rows="2" placeholder="Any safety concerns, near-misses, or hazard observations."/></div>
+        <div class="fg"><label>Additional Remarks</label><textarea id="hoRemarks" rows="2" placeholder="Anything else the incoming shift should know."/></div>
+        <input type="hidden" id="hoId"/>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('mHO')">Cancel</button>
+      <button class="btn btn-amber" onclick="saveHO(true)" style="margin-right:auto">🖨 Save & Print</button>
+      <button class="btn btn-primary" onclick="saveHO(false)">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW BREAKDOWN MODAL -->
+<div class="mover" id="mBDView">
+  <div class="mbox mlg">
+    <div class="mhd"><h3>🚨 Breakdown Details</h3><button class="mclose" onclick="closeM('mBDView')">✕</button></div>
+    <div class="mbdy" id="bdViewBody"></div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('mBDView')">Close</button>
+      <button class="btn btn-amber" id="bdPrintBtn">🖨 Print Report</button>
+      <button class="btn btn-primary" id="bdEditBtn">✏️ Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW HANDOVER MODAL -->
+<div class="mover" id="mHOView">
+  <div class="mbox mlg">
+    <div class="mhd"><h3>📋 Handover Details</h3><button class="mclose" onclick="closeM('mHOView')">✕</button></div>
+    <div class="mbdy" id="hoViewBody"></div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('mHOView')">Close</button>
+      <button class="btn btn-amber" id="hoPrintBtn">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="lmark">O&M</div>
+    <div class="sidebar-logo-text">
+      <strong>HVAC O&M</strong><span>Manager v1.0</span>
+    </div>
+  </div>
+  <div id="sidenav">
+    <div class="nsl">Dashboard</div>
+    <button class="ni active" data-p="overview" onclick="nav('overview')"><span class="nic">📊</span><span class="nl">Overview</span></button>
+    <div class="nsl">Modules</div>
+    <button class="ni" data-p="readings" onclick="nav('readings')"><span class="nic">🌡️</span><span class="nl">Equipment Readings</span></button>
+    <button class="ni" data-p="pm" onclick="nav('pm')"><span class="nic">🗓</span><span class="nl">PM Checklist</span><span id="pmBadge" class="nbadge" style="display:none;background:var(--amber);color:#000">0</span></button>
+    <button class="ni" data-p="breakdown" onclick="nav('breakdown')"><span class="nic">🚨</span><span class="nl">Breakdown Log</span><span id="bdBadge" class="nbadge" style="display:none">0</span></button>
+    <button class="ni" data-p="handover" onclick="nav('handover')"><span class="nic">📋</span><span class="nl">Shift Handover</span></button>
+    <div class="nsl">History</div>
+    <button class="ni" data-p="history" onclick="nav('history')"><span class="nic">📜</span><span class="nl">Readings History</span></button>
+    <div class="nsl">Settings</div>
+    <button class="ni" data-p="settings" onclick="nav('settings')"><span class="nic">⚙️</span><span class="nl">Settings</span></button>
+  </div>
+  <div class="sidebar-foot">
+    <div style="font-family:var(--fm);font-size:10px;color:var(--txt3);text-align:center;padding:4px">Companion to StoreKeeper Pro</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+<header>
+  <div>
+    <div class="ptitle" id="ptitle">Overview</div>
+    <div class="psub" id="psub">Today's O&M Dashboard</div>
+  </div>
+  <div class="hact">
+    <span id="facilityLabel" style="font-family:var(--fm);font-size:11px;color:var(--txt3)"></span>
+    <span style="font-family:var(--fm);font-size:11px;color:var(--txt3)" id="todayLabel"></span>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="sdot offline" id="sdot"></div>
+      <span id="slbl" style="font-family:var(--fm);font-size:11px;color:var(--txt3)">Offline</span>
+    </div>
+    <button class="bico" onclick="manualSync()">↻ <span>Sync</span></button>
+    <button class="bico" onclick="toggleTheme()" id="tbtn">🌙</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══ PAGE: OVERVIEW ═══ -->
+<div class="page active" id="page-overview">
+  <div id="ovAlerts"></div>
+  <div class="sec-label">📊 Today at a Glance</div>
+  <div class="kgrid">
+    <div class="kcard" data-a="cyan"><div class="kico" style="background:var(--cdim)">🌡️</div><div class="kval" id="ov-readings">—</div><div class="klbl">Reading Sessions</div><div class="ksub" id="ov-readings-sub">today</div></div>
+    <div class="kcard" data-a="amber" style="cursor:pointer" onclick="nav('pm')"><div class="kico" style="background:var(--adim)">🗓</div><div class="kval" id="ov-pm-due">—</div><div class="klbl">PM Tasks Due</div><div class="ksub">today / overdue</div></div>
+    <div class="kcard" data-a="red" style="cursor:pointer" onclick="nav('breakdown')"><div class="kico" style="background:var(--rdim)">🚨</div><div class="kval" id="ov-bd-open">—</div><div class="klbl">Open Breakdowns</div><div class="ksub">unresolved faults</div></div>
+    <div class="kcard" data-a="green"><div class="kico" style="background:var(--gdim)">✅</div><div class="kval" id="ov-pm-done">—</div><div class="klbl">PMs Done</div><div class="ksub">this month</div></div>
+    <div class="kcard" data-a="orange"><div class="kico" style="background:var(--odim)">⏱️</div><div class="kval" id="ov-downtime">—</div><div class="klbl">Downtime (hrs)</div><div class="ksub">this month</div></div>
+    <div class="kcard" data-a="purple"><div class="kico" style="background:var(--pdim)">📋</div><div class="kval" id="ov-handovers">—</div><div class="klbl">Handovers</div><div class="ksub">this month</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+    <div class="card">
+      <div class="card-title">🗓 PM Tasks Due Today / Overdue</div>
+      <div id="ov-pm-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🚨 Active Breakdowns</div>
+      <div id="ov-bd-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PAGE: READINGS ═══ -->
+<div class="page" id="page-readings">
+  <div class="cbar">
+    <div style="font-family:var(--fm);font-size:12px;color:var(--txt2);font-weight:600">Log Today's Readings</div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <input type="date" class="fsel" id="rdDate"/>
+      <select class="fsel" id="rdShift">
+        <option value="Morning">Morning Shift</option>
+        <option value="Afternoon">Afternoon Shift</option>
+        <option value="Night">Night Shift</option>
+      </select>
+      <input type="text" class="fsel" id="rdTech" list="techListRD" placeholder="Technician" style="min-width:160px"/>
+      <datalist id="techListRD"></datalist>
+    </div>
+  </div>
+
+  <div id="rdEquipGroups"></div>
+
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+    <button class="btn btn-secondary" onclick="resetReadings()">🔄 Reset</button>
+    <button class="btn btn-primary" onclick="saveReadings()">💾 Save Readings</button>
+  </div>
+</div>
+
+<!-- ═══ PAGE: PM CHECKLIST ═══ -->
+<div class="page" id="page-pm">
+  <div class="cbar">
+    <select class="fsel" id="pmFreqFilter" onchange="renderPM()">
+      <option value="">All Frequencies</option>
+      <option value="Daily">Daily</option>
+      <option value="Weekly">Weekly</option>
+      <option value="Monthly">Monthly</option>
+      <option value="Quarterly">Quarterly</option>
+      <option value="Half-Yearly">Half-Yearly</option>
+      <option value="Annual">Annual</option>
+    </select>
+    <select class="fsel" id="pmStatusFilter" onchange="renderPM()">
+      <option value="">All Status</option>
+      <option value="due">Due / Overdue</option>
+      <option value="done">Completed</option>
+    </select>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-amber btn-sm" onclick="printPMChecklist()">🖨 Print Checklist</button>
+      <button class="btn btn-primary" onclick="openAddPM()">＋ Add PM Task</button>
+    </div>
+  </div>
+  <div id="pmList" style="display:flex;flex-direction:column;gap:0"></div>
+</div>
+
+<!-- ═══ PAGE: BREAKDOWN ═══ -->
+<div class="page" id="page-breakdown">
+  <div class="cbar">
+    <select class="fsel" id="bdStatusFilter" onchange="renderBreakdowns()">
+      <option value="">All Status</option>
+      <option value="Open">Open</option>
+      <option value="Pending">Pending</option>
+      <option value="Closed">Closed</option>
+    </select>
+    <select class="fsel" id="bdPriorityFilter" onchange="renderBreakdowns()">
+      <option value="">All Priority</option>
+      <option value="Critical">Critical</option>
+      <option value="High">High</option>
+      <option value="Medium">Medium</option>
+      <option value="Low">Low</option>
+    </select>
+    <input type="month" class="fsel" id="bdMonthFilter" onchange="renderBreakdowns()"/>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="exportBD()">⬇ Export</button>
+      <button class="btn btn-danger" onclick="openAddBD()">🚨 Log Breakdown</button>
+    </div>
+  </div>
+  <div class="twrap">
+    <table style="min-width:900px">
+      <thead><tr>
+        <th>Date</th><th>Machine</th><th>Fault</th><th>Priority</th>
+        <th>Status</th><th>Attended By</th><th>Downtime</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="bdTb"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ PAGE: HANDOVER ═══ -->
+<div class="page" id="page-handover">
+  <div class="cbar">
+    <select class="fsel" id="hoShiftFilter" onchange="renderHandovers()">
+      <option value="">All Shifts</option>
+      <option value="Morning">Morning</option>
+      <option value="Afternoon">Afternoon</option>
+      <option value="Night">Night</option>
+    </select>
+    <input type="month" class="fsel" id="hoMonthFilter" onchange="renderHandovers()"/>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="openAddHO()">📋 New Handover</button>
+    </div>
+  </div>
+  <div id="hoList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
+</div>
+
+<!-- ═══ PAGE: HISTORY ═══ -->
+<div class="page" id="page-history">
+  <div class="cbar">
+    <input type="month" class="fsel" id="histMonth" onchange="renderHistory()"/>
+    <select class="fsel" id="histShiftF" onchange="renderHistory()">
+      <option value="">All Shifts</option>
+      <option value="Morning">Morning</option>
+      <option value="Afternoon">Afternoon</option>
+      <option value="Night">Night</option>
+    </select>
+    <div style="margin-left:auto">
+      <button class="btn btn-secondary btn-sm" onclick="exportReadings()">⬇ Export CSV</button>
+    </div>
+  </div>
+  <div class="twrap">
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Shift</th><th>Equipment</th><th>Parameter</th><th>Value</th><th>Unit</th><th>Logged By</th>
+      </tr></thead>
+      <tbody id="histTb"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ PAGE: SETTINGS ═══ -->
+<div class="page" id="page-settings">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+    <div class="card" style="grid-column:1/-1;border-color:var(--cyan);background:linear-gradient(135deg,var(--cdim) 0%,var(--surf) 100%)">
+      <div class="card-title" style="color:var(--cyan);font-size:13px">🔗 Google Apps Script Connection</div>
+      <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Paste your deployed Web App URL here. All data will sync to your Google Sheet automatically.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="flex:1;min-width:300px">
+          <label>Apps Script Web App URL *</label>
+          <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec"/>
+        </div>
+        <button class="btn btn-primary" onclick="saveGasUrl()">💾 Save & Test</button>
+        <button class="btn btn-secondary btn-sm" onclick="manualSync()">↻ Sync Now</button>
+      </div>
+      <div style="margin-top:10px;padding:10px 14px;background:var(--bg2);border-radius:8px;font-family:var(--fm);font-size:10px;color:var(--txt3);line-height:1.9">
+        <strong style="color:var(--txt2)">Setup steps:</strong><br/>
+        1. Open your Google Sheet → Extensions → Apps Script<br/>
+        2. Paste the Apps Script code (HVAC_OM_AppScript.gs) → Save<br/>
+        3. Deploy → New Deployment → Web App → Execute as: Me → Anyone → Deploy<br/>
+        4. Copy the URL and paste it above
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏭 Facility Settings</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="fg"><label>Facility / Plant Name</label><input type="text" id="setFacility" placeholder="e.g. ABC Tower HVAC Plant"/></div>
+        <div class="fg"><label>Department</label><input type="text" id="setDept" placeholder="e.g. MEP Maintenance"/></div>
+        <div class="fg"><label>Your Name (Supervisor)</label><input type="text" id="setUser" placeholder="Your name"/></div>
+        <button class="btn btn-primary btn-sm" onclick="saveFacilitySettings()">💾 Save</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">👷 Technicians</div>
+      <div id="techListSettings" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="newTechName" class="fsel" placeholder="Technician name" style="flex:1"/>
+        <button class="btn btn-primary btn-sm" onclick="addTech()">＋ Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌡️ Equipment Configuration</div>
+      <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Define your equipment for daily readings log.</div>
+      <div id="equipList" style="margin-bottom:10px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="newEquipName" class="fsel" placeholder="Equipment name (e.g. Chiller-1)" style="flex:1"/>
+          <select id="newEquipType" class="fsel">
+            <option value="chiller">Chiller</option>
+            <option value="ahu">AHU</option>
+            <option value="cooling-tower">Cooling Tower</option>
+            <option value="pump">Pump</option>
+            <option value="custom">Custom</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="addEquipment()">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🗑 Data Management</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-secondary btn-sm" onclick="exportAll()">⬇ Export All Data (JSON)</button>
+        <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Clear All Data</button>
+        <div style="font-size:11px;color:var(--txt3);font-family:var(--fm)" id="dataStats"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════
+// CONFIG — GAS URL stored in localStorage
+// ════════════════════════════════════════════
+const CFG = {
+  get url()  { return localStorage.getItem('om_gas_url') || '' },
+  set url(v) { localStorage.setItem('om_gas_url', v) }
+};
+
+// ════════════════════════════════════════════
+// STATE & STORAGE
+// ════════════════════════════════════════════
+const STORE_KEY = 'hvac_om_v1';
+let DB = {
+  readings: [],
+  pmTasks: [],
+  pmLogs: [],
+  breakdowns: [],
+  handovers: [],
+  technicians: [],
+  equipment: [],
+  settings: { facility: 'HVAC Plant', dept: 'Maintenance', user: 'Supervisor' }
+};
+
+function saveCache() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch(e) {}
+}
+
+// Keep old name as alias
+function save() { saveCache(); }
+
+function load() {
+  try {
+    const d = localStorage.getItem(STORE_KEY);
+    if (d) DB = { ...DB, ...JSON.parse(d) };
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════════
+// API — Google Apps Script
+// ════════════════════════════════════════════
+let _syncInProgress = false;
+
+function setStat(s) {
+  const dot = $('sdot'), lbl = $('slbl');
+  dot.className = 'sdot ' + s;
+  if (lbl) lbl.textContent = { online:'Online', syncing:'Syncing…', offline:'Offline', error:'Error' }[s] || s;
+}
+
+async function apiGet(params) {
+  if (!CFG.url) throw new Error('No Apps Script URL configured');
+  const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  const res = await fetch(`${CFG.url}?${qs}`, { redirect:'follow' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'API error');
+  return data;
+}
+
+async function apiPost(body) {
+  if (!CFG.url) throw new Error('No Apps Script URL configured');
+  const res = await fetch(CFG.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    redirect: 'follow'
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'API error');
+  return data;
+}
+
+async function getData() {
+  if (_syncInProgress) return;
+  if (!CFG.url) { setStat('offline'); return; }
+  _syncInProgress = true;
+  setStat('syncing');
+  try {
+    const data = await apiGet({ action: 'getData' });
+
+    if (Array.isArray(data.readings)    && data.readings.length)    DB.readings    = data.readings;
+    if (Array.isArray(data.pmTasks)     && data.pmTasks.length)     DB.pmTasks     = data.pmTasks;
+    if (Array.isArray(data.pmLogs)      && data.pmLogs.length)      DB.pmLogs      = data.pmLogs;
+    if (Array.isArray(data.breakdowns)  && data.breakdowns.length)  DB.breakdowns  = data.breakdowns;
+    if (Array.isArray(data.handovers)   && data.handovers.length)   DB.handovers   = data.handovers;
+    if (Array.isArray(data.technicians))                             DB.technicians = data.technicians;
+    if (Array.isArray(data.equipment)   && data.equipment.length)   DB.equipment   = data.equipment;
+    if (data.settings && typeof data.settings === 'object') {
+      DB.settings = { ...DB.settings, ...data.settings };
+    }
+
+    saveCache();
+    setStat('online');
+    buildTechDatalist();
+    renderPage();
+    updateBadges();
+  } catch(err) {
+    setStat('error');
+    showToast('⚠ Sync failed: ' + err.message, 'error');
+  } finally {
+    _syncInProgress = false;
+  }
+}
+
+async function manualSync() {
+  showToast('↻ Syncing…', 'info');
+  await getData();
+  if ($('sdot').classList.contains('online'))
+    showToast('✅ Synced successfully');
+}
+
+async function saveGasUrl() {
+  const url = $('gasUrl').value.trim();
+  if (!url) { showToast('⚠ Paste your Apps Script URL first', 'warn'); return; }
+  CFG.url = url;
+  showToast('🔗 URL saved — testing connection…', 'info');
+  await getData();
+  renderSettings();
+}
+
+// Default equipment if none configured
+const DEFAULT_EQUIPMENT = [
+  { id:'eq1', name:'Chiller-1', type:'chiller' },
+  { id:'eq2', name:'Chiller-2', type:'chiller' },
+  { id:'eq3', name:'AHU-01', type:'ahu' },
+  { id:'eq4', name:'Cooling Tower-1', type:'cooling-tower' },
+  { id:'eq5', name:'CHWP-1', type:'pump' }
+];
+
+// Reading templates per equipment type
+const READING_PARAMS = {
+  chiller: [
+    { key:'leavingChwTemp', label:'Leaving CHW Temp', unit:'°C' },
+    { key:'enteringChwTemp', label:'Entering CHW Temp', unit:'°C' },
+    { key:'leavingCwTemp', label:'Leaving CW Temp', unit:'°C' },
+    { key:'enteringCwTemp', label:'Entering CW Temp', unit:'°C' },
+    { key:'compAmps', label:'Compressor Amps', unit:'A' },
+    { key:'runHours', label:'Run Hours', unit:'hrs' },
+    { key:'status', label:'Status', unit:'OK/Trip/Off' }
+  ],
+  ahu: [
+    { key:'supplyAirTemp', label:'Supply Air Temp', unit:'°C' },
+    { key:'returnAirTemp', label:'Return Air Temp', unit:'°C' },
+    { key:'filterDP', label:'Filter D/P', unit:'Pa' },
+    { key:'fanAmps', label:'Fan Amps', unit:'A' },
+    { key:'runHours', label:'Run Hours', unit:'hrs' },
+    { key:'status', label:'Status', unit:'OK/Trip/Off' }
+  ],
+  'cooling-tower': [
+    { key:'inletTemp', label:'Inlet Water Temp', unit:'°C' },
+    { key:'outletTemp', label:'Outlet Water Temp', unit:'°C' },
+    { key:'fanAmps', label:'Fan Amps', unit:'A' },
+    { key:'conductivity', label:'TDS/Conductivity', unit:'ppm' },
+    { key:'status', label:'Status', unit:'OK/Off' }
+  ],
+  pump: [
+    { key:'pressure', label:'Discharge Pressure', unit:'bar' },
+    { key:'amps', label:'Running Amps', unit:'A' },
+    { key:'runHours', label:'Run Hours', unit:'hrs' },
+    { key:'status', label:'Status', unit:'OK/Trip/Off' }
+  ],
+  custom: [
+    { key:'reading1', label:'Reading 1', unit:'—' },
+    { key:'reading2', label:'Reading 2', unit:'—' },
+    { key:'status', label:'Status', unit:'—' }
+  ]
+};
+
+// ════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const uid = () => 'ID' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const todayISO = () => new Date().toISOString().split('T')[0];
+const nowTime = () => new Date().toTimeString().slice(0,5);
+const monthISO = () => todayISO().slice(0,7);
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); } catch(e) { return d; }
+}
+function fmtDT(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return d; }
+}
+
+let _toast;
+function showToast(msg, type='ok') {
+  clearTimeout(_toast);
+  const t = $('toast');
+  t.textContent = msg; t.className = 'show ' + type;
+  _toast = setTimeout(() => t.className = '', 3500);
+}
+
+function openM(id) { $(id).classList.add('open'); }
+function closeM(id) { $(id).classList.remove('open'); }
+
+// ════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════
+const PAGES = {
+  overview:  { t:'Overview',          s:"Today's O&M Dashboard" },
+  readings:  { t:'Equipment Readings', s:'Log daily readings for all equipment' },
+  pm:        { t:'PM Checklist',      s:'Preventive maintenance tasks & schedule' },
+  breakdown: { t:'Breakdown Log',     s:'Fault & breakdown register' },
+  handover:  { t:'Shift Handover',    s:'Shift handover notes & history' },
+  history:   { t:'Readings History',  s:'Past equipment readings log' },
+  settings:  { t:'Settings',          s:'Configure equipment, technicians & facility' }
+};
+
+let curPage = 'overview';
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  $('page-' + page)?.classList.add('active');
+  document.querySelectorAll('.ni').forEach(b => b.classList.toggle('active', b.dataset.p === page));
+  const m = PAGES[page] || {};
+  $('ptitle').textContent = m.t || page;
+  $('psub').textContent   = m.s || '';
+  curPage = page;
+  renderPage();
+}
+
+function renderPage() {
+  switch(curPage) {
+    case 'overview':  renderOverview(); break;
+    case 'readings':  renderReadingsForm(); break;
+    case 'pm':        renderPM(); break;
+    case 'breakdown': renderBreakdowns(); break;
+    case 'handover':  renderHandovers(); break;
+    case 'history':   renderHistory(); break;
+    case 'settings':  renderSettings(); break;
+  }
+}
+
+// ════════════════════════════════════════════
+// OVERVIEW
+// ════════════════════════════════════════════
+function renderOverview() {
+  const today = todayISO();
+  const mo    = monthISO();
+
+  // Readings today
+  const rdToday = DB.readings.filter(r => r.date === today);
+  $('ov-readings').textContent = rdToday.length;
+  $('ov-readings-sub').textContent = rdToday.length ? `${[...new Set(rdToday.map(r=>r.shift))].join(', ')} shift` : 'none logged yet';
+
+  // PM due
+  const pmDue = getPMDueToday();
+  $('ov-pm-due').textContent = pmDue.length;
+  $('ov-pm-due').style.color = pmDue.length > 0 ? 'var(--amber)' : 'var(--green)';
+
+  // PM done this month
+  const pmDone = DB.pmLogs.filter(l => String(l.date||'').startsWith(mo));
+  $('ov-pm-done').textContent = pmDone.length;
+
+  // Open breakdowns
+  const bdOpen = DB.breakdowns.filter(b => b.status === 'Open' || b.status === 'Pending');
+  $('ov-bd-open').textContent = bdOpen.length;
+  $('ov-bd-open').style.color = bdOpen.length > 0 ? 'var(--red)' : 'var(--green)';
+
+  // Downtime this month
+  const dt = DB.breakdowns.filter(b => String(b.date||'').startsWith(mo)).reduce((s,b) => s + (Number(b.downtime)||0), 0);
+  $('ov-downtime').textContent = dt.toFixed(1);
+
+  // Handovers this month
+  $('ov-handovers').textContent = DB.handovers.filter(h => String(h.date||'').startsWith(mo)).length;
+
+  // Alert banners
+  const alerts = [];
+  if (bdOpen.filter(b=>b.priority==='Critical').length)
+    alerts.push({ type:'error', icon:'🚨', title:'Critical Breakdown Active', sub:`${bdOpen.filter(b=>b.priority==='Critical').length} critical fault(s) unresolved — immediate attention needed` });
+  if (pmDue.length)
+    alerts.push({ type:'warn', icon:'⚠️', title:`${pmDue.length} PM Task(s) Due Today / Overdue`, sub:'Click PM Checklist to view and complete' });
+
+  $('ovAlerts').innerHTML = alerts.map(a => `
+    <div class="alert-banner ${a.type==='warn'?'warn':''}">
+      <div class="alert-banner-icon">${a.icon}</div>
+      <div class="alert-banner-text"><strong>${a.title}</strong><span>${a.sub}</span></div>
+      <button class="btn btn-sm btn-secondary" onclick="nav('${a.type==='warn'?'pm':'breakdown'}')" style="flex-shrink:0">View →</button>
+    </div>`).join('');
+
+  // PM list
+  $('ov-pm-list').innerHTML = pmDue.length
+    ? pmDue.slice(0,5).map(t => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surf2);border-radius:8px;border:1px solid var(--bdr);cursor:pointer" onclick="nav('pm')">
+          <div>
+            <div style="font-weight:600;font-size:13px">${esc(t.name)}</div>
+            <div style="font-size:11px;font-family:var(--fm);color:var(--txt3)">${esc(t.frequency)} · ${esc(t.equipment||'—')}</div>
+          </div>
+          <span class="badge bwarn">${esc(t.frequency)}</span>
+        </div>`).join('')
+    : '<div style="color:var(--green);text-align:center;padding:20px;font-size:13px">✅ No PM tasks due today</div>';
+
+  // BD list
+  $('ov-bd-list').innerHTML = bdOpen.length
+    ? bdOpen.slice(0,5).map(b => `
+        <div class="bd-card ${b.status.toLowerCase()}" style="margin-bottom:0;cursor:pointer" onclick="viewBD('${b.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div class="bd-machine">${esc(b.machine)}</div>
+            ${bdPriorityBadge(b.priority)}
+          </div>
+          <div class="bd-fault">${esc(b.fault.length>60?b.fault.slice(0,60)+'…':b.fault)}</div>
+          <div class="bd-meta"><span class="bd-meta-item">📅 ${fmtDate(b.date)}</span><span class="bd-meta-item">👤 ${esc(b.tech||'—')}</span>${b.downtime?`<span class="bd-meta-item">⏱️ ${b.downtime}h</span>`:''}</div>
+        </div>`).join('')
+    : '<div style="color:var(--green);text-align:center;padding:20px;font-size:13px">✅ No open breakdowns</div>';
+
+  // Badges
+  updateBadges();
+}
+
+// ════════════════════════════════════════════
+// READINGS FORM
+// ════════════════════════════════════════════
+function renderReadingsForm() {
+  $('rdDate').value  = todayISO();
+  const hr = new Date().getHours();
+  $('rdShift').value = hr < 14 ? 'Morning' : hr < 22 ? 'Afternoon' : 'Night';
+  buildTechDatalist();
+
+  const equip = DB.equipment.length ? DB.equipment : DEFAULT_EQUIPMENT;
+  $('rdEquipGroups').innerHTML = equip.map(eq => {
+    const params = READING_PARAMS[eq.type] || READING_PARAMS.custom;
+    return `
+      <div class="eq-group">
+        <div class="eq-group-hd">
+          <span>${eqIcon(eq.type)}</span>
+          <span>${esc(eq.name)}</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--txt3)">${eq.type.toUpperCase()}</span>
+        </div>
+        <div class="eq-group-body">
+          <div class="reading-grid">
+            ${params.map(p => `
+              <div class="reading-cell">
+                <label>${esc(p.label)}</label>
+                <input type="text" id="rd_${eq.id}_${p.key}" placeholder="—"/>
+                <div class="unit">${esc(p.unit)}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function eqIcon(t) {
+  return {chiller:'❄️',ahu:'💨','cooling-tower':'🌊',pump:'⚙️',custom:'🔧'}[t]||'🔧';
+}
+
+async function saveReadings() {
+  const date  = $('rdDate').value || todayISO();
+  const shift = $('rdShift').value;
+  const tech  = $('rdTech').value.trim();
+  if (!tech) { showToast('⚠ Enter technician name', 'warn'); return; }
+
+  const equip = DB.equipment.length ? DB.equipment : DEFAULT_EQUIPMENT;
+  const rows = [];
+  equip.forEach(eq => {
+    const params = READING_PARAMS[eq.type] || READING_PARAMS.custom;
+    params.forEach(p => {
+      const val = document.getElementById(`rd_${eq.id}_${p.key}`)?.value.trim();
+      if (val) {
+        rows.push({ id:uid(), date, shift, equipment:eq.name, equipId:eq.id, parameter:p.label, value:val, unit:p.unit, tech, createdAt: new Date().toISOString() });
+      }
+    });
+  });
+
+  if (!rows.length) { showToast('⚠ Enter at least one reading', 'warn'); return; }
+
+  // Optimistic local save
+  DB.readings.push(...rows);
+  saveCache();
+  showToast(`✅ Saved ${rows.length} readings for ${shift} shift`);
+  resetReadings();
+
+  // Sync to sheet
+  try {
+    await apiPost({ action: 'saveReadings', rows });
+  } catch(e) { showToast('⚠ Saved locally — sheet sync failed: ' + e.message, 'warn'); }
+}
+
+function resetReadings() {
+  const equip = DB.equipment.length ? DB.equipment : DEFAULT_EQUIPMENT;
+  equip.forEach(eq => {
+    const params = READING_PARAMS[eq.type] || READING_PARAMS.custom;
+    params.forEach(p => {
+      const el = document.getElementById(`rd_${eq.id}_${p.key}`);
+      if (el) el.value = '';
+    });
+  });
+}
+
+// ════════════════════════════════════════════
+// PM CHECKLIST
+// ════════════════════════════════════════════
+function getPMDueToday() {
+  const today = todayISO();
+  const mo = monthISO();
+  return DB.pmTasks.filter(t => {
+    const lastLog = DB.pmLogs.filter(l => l.taskId === t.id).sort((a,b) => b.date.localeCompare(a.date))[0];
+    if (t.frequency === 'Daily') {
+      return !lastLog || lastLog.date < today;
+    }
+    if (t.frequency === 'Weekly') {
+      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+      return !lastLog || new Date(lastLog.date) < weekAgo;
+    }
+    if (t.frequency === 'Monthly') {
+      return !lastLog || !lastLog.date.startsWith(mo);
+    }
+    return false;
+  });
+}
+
+function renderPM() {
+  const freqF   = $('pmFreqFilter')?.value || '';
+  const statusF = $('pmStatusFilter')?.value || '';
+  let tasks = [...DB.pmTasks];
+  if (freqF)   tasks = tasks.filter(t => t.frequency === freqF);
+
+  const today = todayISO();
+  const mo = monthISO();
+
+  function isDue(t) {
+    const lastLog = DB.pmLogs.filter(l => l.taskId === t.id).sort((a,b) => b.date.localeCompare(a.date))[0];
+    if (t.frequency === 'Daily')   return !lastLog || lastLog.date < today;
+    if (t.frequency === 'Weekly')  { const w = new Date(); w.setDate(w.getDate()-7); return !lastLog || new Date(lastLog.date) < w; }
+    if (t.frequency === 'Monthly') return !lastLog || !lastLog.date.startsWith(mo);
+    return false;
+  }
+
+  if (statusF === 'due')  tasks = tasks.filter(t => isDue(t));
+  if (statusF === 'done') tasks = tasks.filter(t => !isDue(t));
+
+  const freqColor = { Daily:'var(--blue)', Weekly:'var(--green)', Monthly:'var(--amber)', Quarterly:'var(--purple)', 'Half-Yearly':'var(--orange)', Annual:'var(--red)' };
+
+  $('pmList').innerHTML = !tasks.length
+    ? '<div class="empty"><div class="eico">🗓</div>' + (DB.pmTasks.length ? 'No tasks match filter.' : 'No PM tasks added yet. Click + Add PM Task.') + '</div>'
+    : tasks.map(t => {
+        const due = isDue(t);
+        const lastLog = DB.pmLogs.filter(l => l.taskId === t.id).sort((a,b) => b.date.localeCompare(a.date))[0];
+        const fc = freqColor[t.frequency] || 'var(--txt3)';
+        return `<div class="cl-item ${!due ? 'done' : ''}">
+          <div class="cl-check ${!due?'checked':''}" onclick="${due ? `openCompletePM('${t.id}')` : 'void(0)'}">
+            ${!due ? '✓' : ''}
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="cl-title">${esc(t.name)}</span>
+              <span class="cl-freq" style="background:${fc}22;color:${fc};border:1px solid ${fc}44">${t.frequency}</span>
+              ${due ? '<span class="badge bwarn">Due</span>' : '<span class="badge bok">Done</span>'}
+            </div>
+            <div class="cl-meta">${esc(t.equipment||'—')} ${t.duration?`· ~${t.duration} min`:''} ${t.assigned?`· 👤 ${t.assigned}`:''}</div>
+            ${lastLog ? `<div class="cl-meta" style="color:var(--txt3)">Last done: ${fmtDate(lastLog.date)} by ${esc(lastLog.tech||'—')}</div>` : '<div class="cl-meta" style="color:var(--red)">Never completed</div>'}
+            ${t.instructions ? `<div class="cl-meta" style="margin-top:4px;white-space:pre-wrap">${esc(t.instructions)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            ${due ? `<button class="btn btn-xs btn-success" onclick="openCompletePM('${t.id}')">✅ Done</button>` : ''}
+            <button class="btn btn-xs btn-secondary" onclick="editPM('${t.id}')">✏️</button>
+            <button class="btn btn-xs btn-danger" onclick="delPM('${t.id}')">🗑</button>
+          </div>
+        </div>`;
+      }).join('');
+}
+
+function openAddPM() {
+  $('mPMTitle').textContent = '🗓 Add PM Task';
+  $('pmName').value = ''; $('pmEquip').value = ''; $('pmFreq').value = 'Monthly';
+  $('pmAssigned').value = ''; $('pmDuration').value = ''; $('pmInstructions').value = '';
+  $('pmId').value = '';
+  buildTechDatalist();
+  openM('mPM');
+  setTimeout(() => $('pmName').focus(), 120);
+}
+
+function editPM(id) {
+  const t = DB.pmTasks.find(x => x.id === id);
+  if (!t) return;
+  $('mPMTitle').textContent = '✏️ Edit PM Task';
+  $('pmName').value = t.name||''; $('pmEquip').value = t.equipment||'';
+  $('pmFreq').value = t.frequency||'Monthly'; $('pmAssigned').value = t.assigned||'';
+  $('pmDuration').value = t.duration||''; $('pmInstructions').value = t.instructions||'';
+  $('pmId').value = id;
+  openM('mPM');
+}
+
+async function savePM() {
+  const name = $('pmName').value.trim();
+  if (!name) { showToast('⚠ Task name required', 'error'); return; }
+  const id = $('pmId').value;
+  const task = {
+    id: id || uid(), name,
+    equipment: $('pmEquip').value.trim(),
+    frequency: $('pmFreq').value,
+    assigned: $('pmAssigned').value.trim(),
+    duration: $('pmDuration').value,
+    instructions: $('pmInstructions').value.trim()
+  };
+  if (id) { const i = DB.pmTasks.findIndex(x=>x.id===id); if(i>=0) DB.pmTasks[i]=task; }
+  else DB.pmTasks.push(task);
+  saveCache(); closeM('mPM');
+  showToast(id ? '✅ PM task updated' : '✅ PM task added');
+  renderPM(); updateBadges();
+
+  try {
+    if (id) await apiPost({ action:'updatePMTask', ...task });
+    else    await apiPost({ action:'savePMTask',   ...task });
+  } catch(e) { showToast('⚠ Saved locally — sheet sync failed', 'warn'); }
+}
+
+async function delPM(id) {
+  if (!confirm('Delete this PM task?')) return;
+  DB.pmTasks = DB.pmTasks.filter(x => x.id !== id);
+  DB.pmLogs  = DB.pmLogs.filter(x => x.taskId !== id);
+  saveCache(); renderPM(); updateBadges();
+  showToast('🗑 PM task deleted');
+  try { await apiPost({ action:'deletePMTask', id }); } catch(e) {}
+}
+
+function openCompletePM(id) {
+  const t = DB.pmTasks.find(x => x.id === id);
+  if (!t) return;
+  $('pmLogInfo').innerHTML = `<div class="il">Task</div><div class="iv">${esc(t.name)}</div><div style="font-size:11px;font-family:var(--fm);color:var(--txt3);margin-top:4px">${esc(t.equipment||'—')} · ${t.frequency}</div>`;
+  $('pmLogDate').value = todayISO();
+  $('pmLogTech').value = DB.settings.user || '';
+  $('pmLogRemarks').value = '';
+  $('pmLogId').value = id;
+  buildTechDatalist();
+  openM('mPMLog');
+}
+
+async function completePM() {
+  const id   = $('pmLogId').value;
+  const tech = $('pmLogTech').value.trim();
+  const date = $('pmLogDate').value || todayISO();
+  if (!tech) { showToast('⚠ Technician required', 'error'); return; }
+  const log = { id:uid(), taskId:id, tech, date, remarks: $('pmLogRemarks').value.trim(), createdAt: new Date().toISOString() };
+  DB.pmLogs.push(log);
+  saveCache(); closeM('mPMLog');
+  showToast('✅ PM task marked complete');
+  renderPM(); updateBadges();
+  try { await apiPost({ action:'completePM', ...log }); } catch(e) { showToast('⚠ Saved locally — sheet sync failed', 'warn'); }
+}
+
+// ════════════════════════════════════════════
+// BREAKDOWN LOG
+// ════════════════════════════════════════════
+function bdPriorityBadge(p) {
+  const map = { Critical:'<span class="badge berr">🔴 Critical</span>', High:'<span class="badge borange">🟠 High</span>', Medium:'<span class="badge bwarn">🟡 Medium</span>', Low:'<span class="badge bok">🟢 Low</span>' };
+  return map[p] || `<span class="badge binfo">${esc(p)}</span>`;
+}
+function bdStatusBadge(s) {
+  const map = { Open:'<span class="badge berr">⚡ Open</span>', Pending:'<span class="badge bwarn">⏳ Pending</span>', Closed:'<span class="badge bok">✅ Closed</span>' };
+  return map[s] || `<span class="badge binfo">${esc(s)}</span>`;
+}
+
+function renderBreakdowns() {
+  const sf = $('bdStatusFilter')?.value || '';
+  const pf = $('bdPriorityFilter')?.value || '';
+  const mf = $('bdMonthFilter')?.value || '';
+  let bd = [...DB.breakdowns].sort((a,b) => (b.date+b.time||'').localeCompare(a.date+a.time||''));
+  if (sf) bd = bd.filter(b => b.status === sf);
+  if (pf) bd = bd.filter(b => b.priority === pf);
+  if (mf) bd = bd.filter(b => String(b.date||'').startsWith(mf));
+
+  $('bdTb').innerHTML = !bd.length
+    ? `<tr><td colspan="8" class="empty"><div class="eico">🚨</div>${DB.breakdowns.length?'No matches.':'No breakdowns logged yet.'}</td></tr>`
+    : bd.map(b => `<tr>
+        <td class="mo" style="font-size:11px;white-space:nowrap">${fmtDate(b.date)} ${b.time||''}</td>
+        <td class="nc">${esc(b.machine)}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${esc(b.fault)}">${esc(b.fault.length>50?b.fault.slice(0,50)+'…':b.fault)}</td>
+        <td>${bdPriorityBadge(b.priority)}</td>
+        <td>${bdStatusBadge(b.status)}</td>
+        <td style="font-size:12px">${esc(b.tech||'—')}</td>
+        <td class="mo" style="color:${b.downtime>4?'var(--red)':'var(--txt2)'}">${b.downtime?b.downtime+'h':'—'}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-xs btn-secondary" onclick="viewBD('${b.id}')" title="View">👁</button>
+            <button class="btn btn-xs btn-secondary" onclick="editBD('${b.id}')" title="Edit">✏️</button>
+            <button class="btn btn-xs btn-amber" onclick="printBD('${b.id}')" title="Print">🖨</button>
+            <button class="btn btn-xs btn-danger" onclick="delBD('${b.id}')" title="Delete">🗑</button>
+          </div>
+        </td>
+      </tr>`).join('');
+}
+
+function openAddBD() {
+  $('mBDTitle').textContent = '🚨 Log Breakdown';
+  $('bdDate').value = todayISO(); $('bdTime').value = nowTime();
+  $('bdMachine').value=''; $('bdLocation').value=''; $('bdFault').value='';
+  $('bdTech').value=''; $('bdPriority').value='Medium'; $('bdAction').value='';
+  $('bdStatus').value='Open'; $('bdDowntime').value=''; $('bdRestored').value='';
+  $('bdRemarks').value=''; $('bdId').value='';
+  buildTechDatalist();
+  openM('mBD');
+  setTimeout(() => $('bdMachine').focus(), 120);
+}
+
+function editBD(id) {
+  const b = DB.breakdowns.find(x => x.id === id);
+  if (!b) return;
+  $('mBDTitle').textContent = '✏️ Edit Breakdown Entry';
+  $('bdDate').value=b.date||''; $('bdTime').value=b.time||'';
+  $('bdMachine').value=b.machine||''; $('bdLocation').value=b.location||'';
+  $('bdFault').value=b.fault||''; $('bdTech').value=b.tech||'';
+  $('bdPriority').value=b.priority||'Medium'; $('bdAction').value=b.action||'';
+  $('bdStatus').value=b.status||'Open'; $('bdDowntime').value=b.downtime||'';
+  $('bdRestored').value=b.restored||''; $('bdRemarks').value=b.remarks||'';
+  $('bdId').value=id;
+  buildTechDatalist();
+  openM('mBD');
+}
+
+async function saveBD() {
+  const machine = $('bdMachine').value.trim();
+  const fault   = $('bdFault').value.trim();
+  const tech    = $('bdTech').value.trim();
+  if (!machine) { showToast('⚠ Machine name required', 'error'); return; }
+  if (!fault)   { showToast('⚠ Fault description required', 'error'); return; }
+  if (!tech)    { showToast('⚠ Attended by required', 'error'); return; }
+  const id = $('bdId').value;
+  const bd = {
+    id: id || uid(),
+    date: $('bdDate').value || todayISO(), time: $('bdTime').value,
+    machine, location: $('bdLocation').value.trim(), fault, tech,
+    priority: $('bdPriority').value, action: $('bdAction').value.trim(),
+    status: $('bdStatus').value, downtime: $('bdDowntime').value,
+    restored: $('bdRestored').value, remarks: $('bdRemarks').value.trim(),
+    facility: DB.settings.facility, createdAt: new Date().toISOString()
+  };
+  if (id) { const i = DB.breakdowns.findIndex(x=>x.id===id); if(i>=0) DB.breakdowns[i]=bd; }
+  else DB.breakdowns.unshift(bd);
+  saveCache(); closeM('mBD');
+  showToast(id ? '✅ Breakdown updated' : '✅ Breakdown logged');
+  renderBreakdowns(); updateBadges();
+  try {
+    if (id) await apiPost({ action:'updateBreakdown', ...bd });
+    else    await apiPost({ action:'saveBreakdown',   ...bd });
+  } catch(e) { showToast('⚠ Saved locally — sheet sync failed', 'warn'); }
+}
+
+function viewBD(id) {
+  const b = DB.breakdowns.find(x => x.id === id);
+  if (!b) return;
+  $('bdViewBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:17px;font-weight:700">${esc(b.machine)}</div>
+          <div style="font-size:11px;color:var(--txt3);font-family:var(--fm)">${esc(b.id)} · ${fmtDate(b.date)} ${b.time||''}</div>
+        </div>
+        <div style="display:flex;gap:6px">${bdPriorityBadge(b.priority)}${bdStatusBadge(b.status)}</div>
+      </div>
+      <div class="fr fr2">
+        <div class="irow"><div class="il">Location</div><div class="iv">${esc(b.location||'—')}</div></div>
+        <div class="irow"><div class="il">Attended By</div><div class="iv">${esc(b.tech||'—')}</div></div>
+      </div>
+      <div class="irow"><div class="il">Fault Description</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(b.fault)}</div></div>
+      ${b.action ? `<div class="irow"><div class="il">Action Taken</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(b.action)}</div></div>` : ''}
+      <div class="fr fr3">
+        <div class="irow"><div class="il">Downtime</div><div class="iv" style="color:${b.downtime?'var(--red)':'var(--txt)'}">${b.downtime?b.downtime+'h':'—'}</div></div>
+        <div class="irow"><div class="il">Restored At</div><div class="iv">${b.restored?fmtDT(b.restored):'—'}</div></div>
+        <div class="irow"><div class="il">Facility</div><div class="iv">${esc(b.facility||DB.settings.facility||'—')}</div></div>
+      </div>
+      ${b.remarks ? `<div class="irow"><div class="il">Root Cause / Remarks</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(b.remarks)}</div></div>` : ''}
+    </div>`;
+  $('bdEditBtn').onclick = () => { closeM('mBDView'); editBD(id); };
+  $('bdPrintBtn').onclick = () => { closeM('mBDView'); printBD(id); };
+  openM('mBDView');
+}
+
+async function delBD(id) {
+  if (!confirm('Delete this breakdown entry?')) return;
+  DB.breakdowns = DB.breakdowns.filter(x => x.id !== id);
+  saveCache(); renderBreakdowns(); updateBadges();
+  showToast('🗑 Breakdown deleted');
+  try { await apiPost({ action:'deleteBreakdown', id }); } catch(e) {}
+}
+
+function printBD(id) {
+  const b = DB.breakdowns.find(x => x.id === id);
+  if (!b) return;
+  const fac = DB.settings.facility || 'HVAC Plant';
+  const dept = DB.settings.dept || 'Maintenance';
+  const genDt = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  const pc = { Critical:'background:#fef2f2;color:#dc2626', High:'background:#fff7ed;color:#ea580c', Medium:'background:#fffbeb;color:#d97706', Low:'background:#f0fdf4;color:#16a34a' };
+  const sc = { Open:'background:#fef2f2;color:#dc2626', Pending:'background:#fffbeb;color:#d97706', Closed:'background:#f0fdf4;color:#16a34a' };
+
+  const html = `<div class="rpt-wrap">
+    <div class="rpt-hdr">
+      <div><div class="rpt-title">Breakdown Report</div><div class="rpt-sub">${esc(fac)} — ${esc(dept)}</div></div>
+      <div class="rpt-no">${esc(b.id)}</div>
+    </div>
+    <div class="rpt-meta">
+      <div class="rpt-meta-cell"><div class="rpt-meta-label">Date & Time</div><div class="rpt-meta-val">${fmtDate(b.date)} ${b.time||''}</div></div>
+      <div class="rpt-meta-cell"><div class="rpt-meta-label">Priority</div><div class="rpt-meta-val"><span class="status-pill" style="${pc[b.priority]||''}">${esc(b.priority)}</span></div></div>
+      <div class="rpt-meta-cell"><div class="rpt-meta-label">Status</div><div class="rpt-meta-val"><span class="status-pill" style="${sc[b.status]||''}">${esc(b.status)}</span></div></div>
+    </div>
+    <div class="rpt-sec">Equipment Details</div>
+    <table class="rpt-tbl"><tbody>
+      <tr><td style="font-weight:700;width:35%">Machine / Equipment</td><td style="font-weight:800;font-size:13px">${esc(b.machine)}</td></tr>
+      <tr><td style="font-weight:700">Location</td><td>${esc(b.location||'—')}</td></tr>
+      <tr><td style="font-weight:700">Attended By</td><td>${esc(b.tech||'—')}</td></tr>
+      <tr><td style="font-weight:700">Downtime</td><td style="color:#dc2626;font-weight:700">${b.downtime?b.downtime+' hours':'—'}</td></tr>
+      <tr><td style="font-weight:700">Restoration</td><td>${b.restored?fmtDT(b.restored):'—'}</td></tr>
+    </tbody></table>
+    <div class="rpt-sec">Fault Description</div>
+    <div style="padding:10px 14px;background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px;min-height:48px">${esc(b.fault)}</div>
+    <div class="rpt-sec">Action Taken</div>
+    <div style="padding:10px 14px;background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px;min-height:48px">${esc(b.action||'—')}</div>
+    ${b.remarks ? `<div class="rpt-sec">Root Cause / Remarks</div><div style="padding:10px 14px;background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px">${esc(b.remarks)}</div>` : ''}
+    <div class="rpt-sig">
+      <div class="rpt-sig-cell"><div class="rpt-sig-line"></div><div class="rpt-sig-name">${esc(b.tech||'Technician')}</div><div class="rpt-sig-role">Attended By</div></div>
+      <div class="rpt-sig-cell"><div class="rpt-sig-line"></div><div class="rpt-sig-name">${esc(DB.settings.user||'Supervisor')}</div><div class="rpt-sig-role">Supervisor / Verified By</div></div>
+    </div>
+    <div class="rpt-ftr"><span>StoreKeeper Pro O&M · ${esc(fac)} · Breakdown Report</span><span>Generated: ${genDt}</span></div>
+  </div>`;
+  showInOverlay(html);
+}
+
+// ════════════════════════════════════════════
+// SHIFT HANDOVER
+// ════════════════════════════════════════════
+function renderHandovers() {
+  const sf = $('hoShiftFilter')?.value || '';
+  const mf = $('hoMonthFilter')?.value || '';
+  let ho = [...DB.handovers].sort((a,b) => b.date.localeCompare(a.date));
+  if (sf) ho = ho.filter(h => h.shift.includes(sf));
+  if (mf) ho = ho.filter(h => String(h.date||'').startsWith(mf));
+
+  const shiftColor = { Morning:'var(--amber)', Afternoon:'var(--blue)', Night:'var(--purple)' };
+
+  $('hoList').innerHTML = !ho.length
+    ? '<div class="empty" style="grid-column:1/-1"><div class="eico">📋</div>' + (DB.handovers.length?'No matches.':'No handovers logged yet. Click New Handover.') + '</div>'
+    : ho.map(h => {
+        const shift = h.shift.split(' ')[0];
+        const sc = shiftColor[shift] || 'var(--cyan)';
+        return `<div class="ho-card" onclick="viewHO('${h.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div class="ho-shift" style="color:${sc}">${esc(h.shift)}</div>
+              <div class="ho-date">${fmtDate(h.date)}</div>
+            </div>
+            <button class="btn btn-xs btn-amber" onclick="event.stopPropagation();printHO('${h.id}')">🖨</button>
+          </div>
+          <div class="ho-from" style="margin-top:8px">📤 ${esc(h.from)} → 📥 ${esc(h.to)}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.equipStatus?.slice(0,80)||'—')}</div>
+        </div>`;
+      }).join('');
+}
+
+function openAddHO() {
+  $('mHOTitle').textContent = '📋 New Shift Handover';
+  $('hoDate').value = todayISO();
+  const hr = new Date().getHours();
+  $('hoShift').value = hr < 14 ? 'Morning (06:00–14:00)' : hr < 22 ? 'Afternoon (14:00–22:00)' : 'Night (22:00–06:00)';
+  $('hoFrom').value = DB.settings.user || '';
+  $('hoTo').value = ''; $('hoEquipStatus').value = ''; $('hoPending').value = '';
+  $('hoCompleted').value = ''; $('hoSafety').value = ''; $('hoRemarks').value = '';
+  $('hoId').value = '';
+  buildTechDatalist();
+  openM('mHO');
+  setTimeout(() => $('hoFrom').focus(), 120);
+}
+
+async function saveHO(andPrint=false) {
+  const from = $('hoFrom').value.trim();
+  const to   = $('hoTo').value.trim();
+  const es   = $('hoEquipStatus').value.trim();
+  if (!from) { showToast('⚠ Outgoing supervisor required', 'error'); return; }
+  if (!to)   { showToast('⚠ Incoming supervisor required', 'error'); return; }
+  if (!es)   { showToast('⚠ Equipment status required', 'error'); return; }
+  const id = $('hoId').value;
+  const ho = {
+    id: id || uid(), date: $('hoDate').value || todayISO(),
+    shift: $('hoShift').value, from, to, equipStatus: es,
+    pending: $('hoPending').value.trim(), completed: $('hoCompleted').value.trim(),
+    safety: $('hoSafety').value.trim(), remarks: $('hoRemarks').value.trim(),
+    facility: DB.settings.facility, createdAt: new Date().toISOString()
+  };
+  if (id) { const i = DB.handovers.findIndex(x=>x.id===id); if(i>=0) DB.handovers[i]=ho; }
+  else DB.handovers.unshift(ho);
+  saveCache(); closeM('mHO');
+  showToast(id ? '✅ Handover updated' : '✅ Handover saved');
+  renderHandovers();
+  if (andPrint) printHO(ho.id);
+  try {
+    if (id) await apiPost({ action:'updateHandover', ...ho });
+    else    await apiPost({ action:'saveHandover',   ...ho });
+  } catch(e) { showToast('⚠ Saved locally — sheet sync failed', 'warn'); }
+}
+
+function viewHO(id) {
+  const h = DB.handovers.find(x => x.id === id);
+  if (!h) return;
+  const sc = {Morning:'var(--amber)',Afternoon:'var(--blue)',Night:'var(--purple)'};
+  const shift = h.shift.split(' ')[0];
+  $('hoViewBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-family:var(--fm);font-size:11px;font-weight:700;color:${sc[shift]||'var(--cyan)'};text-transform:uppercase;letter-spacing:.08em">${esc(h.shift)}</div>
+          <div style="font-size:17px;font-weight:700;margin-top:2px">${fmtDate(h.date)}</div>
+        </div>
+        <div style="font-size:12px;color:var(--txt2)">📤 ${esc(h.from)} → 📥 ${esc(h.to)}</div>
+      </div>
+      <div class="irow"><div class="il">Equipment Status</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(h.equipStatus)}</div></div>
+      ${h.pending ? `<div class="irow"><div class="il">Ongoing / Pending Work</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(h.pending)}</div></div>` : ''}
+      ${h.completed ? `<div class="irow"><div class="il">Completed This Shift</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(h.completed)}</div></div>` : ''}
+      ${h.safety ? `<div class="irow" style="border-left:3px solid var(--amber)"><div class="il">Safety / Hazard Alerts</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(h.safety)}</div></div>` : ''}
+      ${h.remarks ? `<div class="irow"><div class="il">Additional Remarks</div><div class="iv" style="font-size:13px;white-space:pre-wrap">${esc(h.remarks)}</div></div>` : ''}
+    </div>`;
+  $('hoPrintBtn').onclick = () => { closeM('mHOView'); printHO(id); };
+  openM('mHOView');
+}
+
+function printHO(id) {
+  const h = DB.handovers.find(x => x.id === id);
+  if (!h) return;
+  const fac = h.facility || DB.settings.facility || 'HVAC Plant';
+  const genDt = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  const html = `<div class="rpt-wrap">
+    <div class="rpt-hdr">
+      <div><div class="rpt-title">Shift Handover Report</div><div class="rpt-sub">${esc(fac)}</div></div>
+      <div class="rpt-no" style="font-size:11px;text-align:right;color:#06b6d4">${esc(h.shift)}<br/><span style="font-size:18px;font-weight:900">${fmtDate(h.date)}</span></div>
+    </div>
+    <div class="rpt-meta">
+      <div class="rpt-meta-cell"><div class="rpt-meta-label">Outgoing Supervisor</div><div class="rpt-meta-val" style="font-size:14px">${esc(h.from)}</div></div>
+      <div class="rpt-meta-cell"><div class="rpt-meta-label">Incoming Supervisor</div><div class="rpt-meta-val" style="font-size:14px">${esc(h.to)}</div></div>
+      <div class="rpt-meta-cell"><div class="rpt-meta-label">Handover Time</div><div class="rpt-meta-val">${genDt}</div></div>
+    </div>
+
+    <div class="rpt-sec">Equipment Status Summary</div>
+    <div style="padding:10px 14px;background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px;min-height:56px">${esc(h.equipStatus)}</div>
+
+    ${h.pending ? `<div class="rpt-sec">Ongoing Issues / Pending Work</div><div style="padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px;min-height:40px">${esc(h.pending)}</div>` : ''}
+    ${h.completed ? `<div class="rpt-sec">Tasks Completed This Shift</div><div style="padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px;min-height:40px">${esc(h.completed)}</div>` : ''}
+    ${h.safety ? `<div class="rpt-sec" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5">⚠️ Safety / Hazard Alerts</div><div style="padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px;min-height:40px">${esc(h.safety)}</div>` : ''}
+    ${h.remarks ? `<div class="rpt-sec">Additional Remarks</div><div style="padding:10px 14px;background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-bottom:12px">${esc(h.remarks)}</div>` : ''}
+
+    <div class="rpt-sig">
+      <div class="rpt-sig-cell"><div class="rpt-sig-line"></div><div class="rpt-sig-name">${esc(h.from)}</div><div class="rpt-sig-role">Outgoing Supervisor</div></div>
+      <div class="rpt-sig-cell"><div class="rpt-sig-line"></div><div class="rpt-sig-name">${esc(h.to)}</div><div class="rpt-sig-role">Incoming Supervisor</div></div>
+    </div>
+    <div class="rpt-ftr"><span>StoreKeeper Pro O&M · ${esc(fac)} · Shift Handover Document</span><span>Generated: ${genDt}</span></div>
+  </div>`;
+  showInOverlay(html);
+}
+
+// ════════════════════════════════════════════
+// READINGS HISTORY
+// ════════════════════════════════════════════
+function renderHistory() {
+  if (!$('histMonth').value) $('histMonth').value = monthISO();
+  const mf = $('histMonth').value || monthISO();
+  const sf = $('histShiftF')?.value || '';
+  let rd = DB.readings.filter(r => String(r.date||'').startsWith(mf));
+  if (sf) rd = rd.filter(r => r.shift === sf);
+  rd.sort((a,b) => b.date.localeCompare(a.date));
+  $('histTb').innerHTML = !rd.length
+    ? '<tr><td colspan="7" class="empty"><div class="eico">📜</div>No readings for this period.</td></tr>'
+    : rd.map(r => `<tr>
+        <td class="mo" style="font-size:11px">${fmtDate(r.date)}</td>
+        <td><span class="badge ${r.shift==='Morning'?'bwarn':r.shift==='Afternoon'?'binfo':'bpurple'}">${r.shift}</span></td>
+        <td class="nc">${esc(r.equipment)}</td>
+        <td style="font-size:12px;color:var(--txt2)">${esc(r.parameter)}</td>
+        <td class="mo" style="font-weight:700;color:var(--cyan)">${esc(r.value)}</td>
+        <td style="font-size:11px;color:var(--txt3)">${esc(r.unit)}</td>
+        <td style="font-size:12px">${esc(r.tech||'—')}</td>
+      </tr>`).join('');
+}
+
+// ════════════════════════════════════════════
+// PM PRINT CHECKLIST
+// ════════════════════════════════════════════
+function printPMChecklist() {
+  const today = todayISO();
+  const fac = DB.settings.facility || 'HVAC Plant';
+  const genDt = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  const mo = monthISO();
+
+  function isDue(t) {
+    const lastLog = DB.pmLogs.filter(l => l.taskId === t.id).sort((a,b) => b.date.localeCompare(a.date))[0];
+    if (t.frequency === 'Daily')   return !lastLog || lastLog.date < today;
+    if (t.frequency === 'Weekly')  { const w = new Date(); w.setDate(w.getDate()-7); return !lastLog || new Date(lastLog.date) < w; }
+    if (t.frequency === 'Monthly') return !lastLog || !lastLog.date.startsWith(mo);
+    return false;
+  }
+
+  const tasks = DB.pmTasks;
+  if (!tasks.length) { showToast('⚠ No PM tasks to print', 'warn'); return; }
+
+  const rows = tasks.map(t => {
+    const due = isDue(t);
+    const lastLog = DB.pmLogs.filter(l => l.taskId === t.id).sort((a,b) => b.date.localeCompare(a.date))[0];
+    return `<tr>
+      <td style="text-align:center;font-size:16px">${due ? '☐' : '☑'}</td>
+      <td style="font-weight:600">${esc(t.name)}</td>
+      <td>${esc(t.equipment||'—')}</td>
+      <td><span class="status-pill" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0">${esc(t.frequency)}</span></td>
+      <td>${esc(t.assigned||'—')}</td>
+      <td style="color:${due?'#dc2626':'#16a34a'};font-weight:700">${due?'DUE':'Done'}</td>
+      <td style="font-size:10px;color:#888">${lastLog?fmtDate(lastLog.date):'Never'}</td>
+      <td style="min-width:80px;border-bottom:1px solid #ccc"></td>
+    </tr>`;
+  }).join('');
+
+  const html = `<div class="rpt-wrap">
+    <div class="rpt-hdr">
+      <div><div class="rpt-title">PM Checklist</div><div class="rpt-sub">${esc(fac)} · ${genDt}</div></div>
+      <div class="rpt-no" style="font-size:10px;color:#06b6d4">Preventive Maintenance Register</div>
+    </div>
+    <table class="rpt-tbl">
+      <thead><tr>
+        <th style="width:40px">✓</th><th>Task</th><th>Equipment</th><th>Frequency</th>
+        <th>Assigned To</th><th>Status</th><th>Last Done</th><th style="min-width:80px">Sign-off</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="rpt-sig">
+      <div class="rpt-sig-cell"><div class="rpt-sig-line"></div><div class="rpt-sig-name">Technician</div><div class="rpt-sig-role">Completed By</div></div>
+      <div class="rpt-sig-cell"><div class="rpt-sig-line"></div><div class="rpt-sig-name">${esc(DB.settings.user||'Supervisor')}</div><div class="rpt-sig-role">Supervisor Sign-off</div></div>
+    </div>
+    <div class="rpt-ftr"><span>StoreKeeper Pro O&M · ${esc(fac)} · PM Checklist</span><span>${genDt}</span></div>
+  </div>`;
+  showInOverlay(html);
+}
+
+// ════════════════════════════════════════════
+// PRINT OVERLAY
+// ════════════════════════════════════════════
+function showInOverlay(html) {
+  $('overlayContent').innerHTML = html;
+  $('printOverlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeOverlay() {
+  $('printOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function doPrintOverlay() {
+  const content = $('overlayContent').innerHTML;
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><title>O&M Report</title>
+  <style>
+    @page { size:A4;margin:12mm 14mm }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#fff;font-family:Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .rpt-wrap{background:#fff;color:#111;font-family:Arial,sans-serif;padding:0}
+    .rpt-hdr{background:#0f172a;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .rpt-title{font-size:16px;font-weight:900;letter-spacing:2px;text-transform:uppercase}
+    .rpt-sub{font-size:9px;letter-spacing:2px;opacity:.7;margin-top:2px;text-transform:uppercase}
+    .rpt-no{text-align:right;font-family:monospace;font-size:14px;font-weight:900;color:#06b6d4}
+    .rpt-meta{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #e5e7eb;border-radius:8px;margin-bottom:14px}
+    .rpt-meta-cell{padding:10px 14px;border-right:1px solid #e5e7eb}
+    .rpt-meta-cell:last-child{border-right:none}
+    .rpt-meta-label{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:3px}
+    .rpt-meta-val{font-size:12px;font-weight:700;color:#111}
+    .rpt-sec{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#475569;background:#f8fafc;padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:8px}
+    .rpt-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px}
+    .rpt-tbl th{background:#1e293b;color:#fff;padding:7px 12px;text-align:left;font-size:10px;font-weight:700}
+    .rpt-tbl td{padding:7px 12px;border-bottom:1px solid #f0f0f0}
+    .rpt-sig{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px;border-top:2px solid #1e293b;padding-top:14px}
+    .rpt-sig-cell{text-align:center}
+    .rpt-sig-line{border-bottom:1.5px solid #333;height:40px;margin-bottom:6px}
+    .rpt-sig-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+    .rpt-sig-role{font-size:8px;color:#888;text-transform:uppercase}
+    .rpt-ftr{border-top:1px solid #e5e7eb;padding-top:8px;margin-top:14px;display:flex;justify-content:space-between;font-size:8px;color:#aaa}
+    .status-pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700}
+    @media print{body{margin:0}}
+  </style></head><body>${content}</body></html>`);
+  win.document.close(); win.focus();
+  setTimeout(()=>{win.print();win.close();},500);
+}
+
+// ════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════
+function renderSettings() {
+  $('setFacility').value = DB.settings.facility || '';
+  $('setDept').value     = DB.settings.dept || '';
+  $('setUser').value     = DB.settings.user || '';
+  if ($('gasUrl')) $('gasUrl').value = CFG.url || '';
+
+  // Techs
+  $('techListSettings').innerHTML = DB.technicians.length
+    ? DB.technicians.map((t,i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:600">👤 ${esc(t)}</span>
+          <button class="btn btn-xs btn-danger" onclick="delTech(${i})">🗑</button>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:var(--txt3)">No technicians added.</div>';
+
+  // Equipment
+  const equip = DB.equipment.length ? DB.equipment : DEFAULT_EQUIPMENT;
+  $('equipList').innerHTML = equip.map((e,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;margin-bottom:6px">
+      <span style="font-size:13px;font-weight:600">${eqIcon(e.type)} ${esc(e.name)}</span>
+      <span style="font-size:10px;font-family:var(--fm);color:var(--txt3)">${e.type}</span>
+      ${DB.equipment.length ? `<button class="btn btn-xs btn-danger" onclick="delEquip(${i})">🗑</button>` : '<span style="font-size:10px;color:var(--txt3)">default</span>'}
+    </div>`).join('');
+
+  $('dataStats').textContent = `Readings: ${DB.readings.length} · PMs: ${DB.pmTasks.length} · Breakdowns: ${DB.breakdowns.length} · Handovers: ${DB.handovers.length}`;
+}
+
+async function saveFacilitySettings() {
+  DB.settings.facility = $('setFacility').value.trim() || 'HVAC Plant';
+  DB.settings.dept     = $('setDept').value.trim();
+  DB.settings.user     = $('setUser').value.trim();
+  saveCache();
+  $('facilityLabel').textContent = DB.settings.facility;
+  showToast('✅ Settings saved');
+  try { await apiPost({ action:'saveSettings', ...DB.settings }); } catch(e) {}
+}
+
+async function addTech() {
+  const name = $('newTechName').value.trim();
+  if (!name) { showToast('⚠ Enter a name', 'warn'); return; }
+  if (!DB.technicians.includes(name)) DB.technicians.push(name);
+  $('newTechName').value = '';
+  saveCache(); renderSettings(); buildTechDatalist();
+  showToast('✅ Technician added');
+  try { await apiPost({ action:'saveTechnician', name }); } catch(e) {}
+}
+
+async function delTech(i) {
+  const name = DB.technicians[i];
+  DB.technicians.splice(i, 1);
+  saveCache(); renderSettings(); buildTechDatalist();
+  try { await apiPost({ action:'deleteTechnician', name }); } catch(e) {}
+}
+
+async function addEquipment() {
+  const name = $('newEquipName').value.trim();
+  const type = $('newEquipType').value;
+  if (!name) { showToast('⚠ Enter equipment name', 'warn'); return; }
+  if (!DB.equipment.length) DB.equipment.push(...DEFAULT_EQUIPMENT);
+  const eq = { id: uid(), name, type };
+  DB.equipment.push(eq);
+  $('newEquipName').value = '';
+  saveCache(); renderSettings();
+  showToast('✅ Equipment added');
+  try { await apiPost({ action:'saveEquipment', ...eq }); } catch(e) {}
+}
+
+async function delEquip(i) {
+  const eq = DB.equipment[i];
+  DB.equipment.splice(i, 1);
+  saveCache(); renderSettings();
+  try { if (eq?.id) await apiPost({ action:'deleteEquipment', id: eq.id }); } catch(e) {}
+}
+
+function buildTechDatalist() {
+  const names = DB.technicians;
+  const html = names.map(n => `<option value="${esc(n)}">`).join('');
+  ['techListBD','techListPM','techListPMLog','techListHO','techListHO2','techListRD'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+// ════════════════════════════════════════════
+// BADGES
+// ════════════════════════════════════════════
+function updateBadges() {
+  const pmDue = getPMDueToday().length;
+  const bdOpen = DB.breakdowns.filter(b => b.status === 'Open').length;
+  const pmB = $('pmBadge');
+  if (pmB) { pmB.textContent = pmDue; pmB.style.display = pmDue ? 'inline' : 'none'; }
+  const bdB = $('bdBadge');
+  if (bdB) { bdB.textContent = bdOpen; bdB.style.display = bdOpen ? 'inline' : 'none'; }
+}
+
+// ════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════
+function exportBD() {
+  const rows = [
+    ['ID','Date','Time','Machine','Location','Fault','Priority','Status','Attended By','Downtime (hrs)','Restored','Action','Remarks'],
+    ...DB.breakdowns.map(b => [b.id,b.date,b.time||'',b.machine,b.location||'',b.fault,b.priority,b.status,b.tech||'',b.downtime||'',b.restored||'',b.action||'',b.remarks||''])
+  ];
+  csvDownload(rows, 'breakdown_log');
+}
+
+function exportReadings() {
+  const rows = [
+    ['Date','Shift','Equipment','Parameter','Value','Unit','Technician'],
+    ...DB.readings.map(r => [r.date,r.shift,r.equipment,r.parameter,r.value,r.unit,r.tech||''])
+  ];
+  csvDownload(rows, 'equipment_readings');
+}
+
+function csvDownload(rows, name) {
+  const csv = rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = name + '_' + todayISO() + '.csv';
+  a.click();
+}
+
+function exportAll() {
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(DB, null, 2));
+  a.download = 'hvac_om_backup_' + todayISO() + '.json';
+  a.click();
+}
+
+function clearAll() {
+  if (!confirm('Are you sure you want to clear ALL O&M data? This cannot be undone.')) return;
+  if (!confirm('Final confirmation: Clear everything?')) return;
+  const s = DB.settings;
+  DB = { readings:[], pmTasks:[], pmLogs:[], breakdowns:[], handovers:[], technicians:[], equipment:[], settings:s };
+  saveCache(); renderPage(); renderSettings();
+  showToast('🗑 All data cleared');
+}
+
+// ════════════════════════════════════════════
+// THEME
+// ════════════════════════════════════════════
+function toggleTheme() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+  $('tbtn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('om_theme', isDark ? 'light' : 'dark');
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+function init() {
+  load();
+
+  // Theme
+  const savedTheme = localStorage.getItem('om_theme') || 'dark';
+  document.documentElement.dataset.theme = savedTheme;
+  $('tbtn').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+
+  // Header labels
+  $('facilityLabel').textContent = DB.settings.facility || 'HVAC Plant';
+  $('todayLabel').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+  // Month filter defaults
+  const mf = document.getElementById('bdMonthFilter');
+  if (mf) mf.value = monthISO();
+  const hm = document.getElementById('hoMonthFilter');
+  if (hm) hm.value = monthISO();
+
+  buildTechDatalist();
+  renderOverview();
+  updateBadges();
+
+  // Connection status
+  if (!CFG.url) setStat('offline');
+  else getData(); // pull latest from sheet
+
+  // Hide loader — guaranteed
+  const _hideLoader = () => {
+    const l = document.getElementById('loader');
+    if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(() => { l.style.display = 'none'; }, 400); }
+  };
+  setTimeout(_hideLoader, 600);
+}
+
+try { init(); } catch(e) { console.error('Init error:', e); }
+// Failsafe: hide loader no matter what
+setTimeout(() => {
+  const l = document.getElementById('loader');
+  if (l) l.style.display = 'none';
+}, 2000);
+</script>
+</body>
+</html>
