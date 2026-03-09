@@ -77,11 +77,15 @@ function getData() {
   var setsRows = setsSh.getDataRange().getValues().slice(1);
   var settings = {};
   for (var s=0;s<setsRows.length;s++) { if(setsRows[s][0]) settings[String(setsRows[s][0])]=String(setsRows[s][1]||''); }
+  var pmTasksRaw = sheetData(getSheet('PMTasks', hdrPMTasks()));
+  var pmTasks = [];
+  for (var p=0; p<pmTasksRaw.length; p++) pmTasks.push(normalizePMTaskOutput(pmTasksRaw[p]));
+
   return ok({
     readings:    sheetData(getSheet('Readings',   hdrReadings())),
     breakdowns:  sheetData(getSheet('Breakdowns', hdrBreakdowns())),
     handovers:   sheetData(getSheet('Handovers',  hdrHandovers())),
-    pmTasks:     sheetData(getSheet('PMTasks',    hdrPMTasks())),
+    pmTasks:     pmTasks,
     pmLogs:      sheetData(getSheet('PMLogs',     hdrPMLogs())),
     attendance:  sheetData(getSheet('Attendance', hdrAttendance())),
     roLogs:      sheetData(getSheet('ROLogs',     hdrROLogs())),
@@ -101,8 +105,8 @@ function saveBreakdown(p)  { getSheet('Breakdowns',hdrBreakdowns()).appendRow(ob
 function updateBreakdown(p){ var h=hdrBreakdowns();var sh=getSheet('Breakdowns',h);var row=findRowById(sh,p.id);if(row<0){sh.appendRow(objToRow(p,h));return ok({id:p.id,note:'inserted'});}sh.getRange(row,1,1,h.length).setValues([objToRow(p,h)]);return ok({id:p.id}); }
 function saveHandover(p)   { getSheet('Handovers',hdrHandovers()).appendRow(objToRow(p,hdrHandovers())); return ok({id:p.id}); }
 function updateHandover(p) { var h=hdrHandovers();var sh=getSheet('Handovers',h);var row=findRowById(sh,p.id);if(row<0){sh.appendRow(objToRow(p,h));return ok({id:p.id,note:'inserted'});}sh.getRange(row,1,1,h.length).setValues([objToRow(p,h)]);return ok({id:p.id}); }
-function savePMTask(p)     { getSheet('PMTasks',hdrPMTasks()).appendRow(objToRow(p,hdrPMTasks())); return ok({id:p.id}); }
-function updatePMTask(p)   { var h=hdrPMTasks();var sh=getSheet('PMTasks',h);var row=findRowById(sh,p.id);if(row<0)sh.appendRow(objToRow(p,h));else sh.getRange(row,1,1,h.length).setValues([objToRow(p,h)]);return ok({id:p.id}); }
+function savePMTask(p)     { var t=normalizePMTaskInput(p); getSheet('PMTasks',hdrPMTasks()).appendRow(objToRow(t,hdrPMTasks())); return ok({id:t.id}); }
+function updatePMTask(p)   { var t=normalizePMTaskInput(p); var h=hdrPMTasks();var sh=getSheet('PMTasks',h);var row=findRowById(sh,t.id);if(row<0)sh.appendRow(objToRow(t,h));else sh.getRange(row,1,1,h.length).setValues([objToRow(t,h)]);return ok({id:t.id}); }
 function deletePMTask(p) {
   deleteRowById('PMTasks',p.id);
   var logSh=getSheet('PMLogs',hdrPMLogs()); var data=logSh.getDataRange().getValues();
@@ -241,6 +245,22 @@ function cellToDateStr(val) {
 }
 function objToRow(obj,headers) {
   var row=[]; for(var i=0;i<headers.length;i++){var v=obj[headers[i]];row.push((v!==undefined&&v!==null)?v:'');} return row;
+}
+function normalizePMTaskInput(task) {
+  var out = {};
+  var keys = Object.keys(task || {});
+  for (var i=0; i<keys.length; i++) out[keys[i]] = task[keys[i]];
+  if ((out.estMins===undefined || out.estMins==='') && out.duration!==undefined) out.estMins = out.duration;
+  if ((out.procedure===undefined || out.procedure==='') && out.instructions!==undefined) out.procedure = out.instructions;
+  return out;
+}
+function normalizePMTaskOutput(task) {
+  var out = {};
+  var keys = Object.keys(task || {});
+  for (var i=0; i<keys.length; i++) out[keys[i]] = task[keys[i]];
+  if (out.duration===undefined || out.duration==='') out.duration = out.estMins || '';
+  if (out.instructions===undefined || out.instructions==='') out.instructions = out.procedure || '';
+  return out;
 }
 function findRowById(sh,id) {
   var data=sh.getDataRange().getValues();
