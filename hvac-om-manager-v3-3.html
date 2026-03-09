@@ -1151,6 +1151,7 @@ let DB = {
   roLogs:      [],
   technicians: [],
   equipment:   [],
+  schedule:    [],
   settings:    { facility: CFG.fac, dept: CFG.dept, user: CFG.user }
 };
 
@@ -1217,25 +1218,19 @@ async function getData() {
   try {
     const data = await apiGet({ action: 'getData' });
 
-    // User records: merge (keeps any local-only rows not yet on server)
-    if (Array.isArray(data.readings)   && data.readings.length)   DB.readings   = _mergeById(data.readings,   DB.readings);
-    if (Array.isArray(data.pmLogs)     && data.pmLogs.length)     DB.pmLogs     = _mergeById(data.pmLogs,     DB.pmLogs);
-    if (Array.isArray(data.breakdowns) && data.breakdowns.length) DB.breakdowns = _mergeById(data.breakdowns, DB.breakdowns);
-    if (Array.isArray(data.handovers)  && data.handovers.length)  DB.handovers  = _mergeById(data.handovers,  DB.handovers);
-    if (Array.isArray(data.attendance) && data.attendance.length) DB.attendance = _mergeById(data.attendance, DB.attendance);
-    if (Array.isArray(data.roLogs)     && data.roLogs.length)     DB.roLogs     = _mergeById(data.roLogs,     DB.roLogs);
-    if (Array.isArray(data.schedule)   && data.schedule.length)   DB.schedule   = _mergeById(data.schedule,   DB.schedule);
+    // Server is source-of-truth for all tables. Always replace with arrays from API,
+    // including empty arrays, so deleted/cleared data does not linger in UI memory.
+    DB.readings   = Array.isArray(data.readings)   ? data.readings   : [];
+    DB.pmLogs     = Array.isArray(data.pmLogs)     ? data.pmLogs     : [];
+    DB.breakdowns = Array.isArray(data.breakdowns) ? data.breakdowns : [];
+    DB.handovers  = Array.isArray(data.handovers)  ? data.handovers  : [];
+    DB.attendance = Array.isArray(data.attendance) ? data.attendance : [];
+    DB.roLogs     = Array.isArray(data.roLogs)     ? data.roLogs     : [];
+    DB.schedule   = Array.isArray(data.schedule)   ? data.schedule   : [];
 
-    // Config: server is authoritative
-    if (Array.isArray(data.pmTasks)   && data.pmTasks.length)   DB.pmTasks   = data.pmTasks;
-    if (Array.isArray(data.equipment) && data.equipment.length) DB.equipment = data.equipment;
-
-    // Technicians: merge (keep locally added names not yet on server)
-    if (Array.isArray(data.technicians) && data.technicians.length) {
-      const merged = [...data.technicians];
-      DB.technicians.forEach(n => { if (!merged.includes(n)) merged.push(n); });
-      DB.technicians = merged;
-    }
+    DB.pmTasks    = Array.isArray(data.pmTasks)    ? data.pmTasks    : [];
+    DB.equipment  = Array.isArray(data.equipment)  ? data.equipment  : [];
+    DB.technicians= Array.isArray(data.technicians)? data.technicians: [];
     if (data.settings && typeof data.settings === 'object') {
       DB.settings = { ...DB.settings, ...data.settings };
       // Keep config keys in sync
